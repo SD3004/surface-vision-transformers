@@ -5,3 +5,6 @@ This repository contains code to apply vision transformers on surface data. Here
 ## Installation
 
 For PyTorch and dependencies installation, please follow instructions in [install.md](docs/install.md)
+
+sd
+test
