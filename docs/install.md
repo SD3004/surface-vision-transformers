@@ -30,5 +30,5 @@ conda install pytorch torchvision torchaudio cudatoolkit=11.3 -c pytorch -c nvid
 4. install requierements
 
 ```
-conda install --file requirements.txt
+conda install -c conda-forge --file requirements.txt
 ```

@@ -42,8 +42,6 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 from models.vit import ViT
 
-from warmup_scheduler import GradualWarmupScheduler
-
 from tools.utils import load_weights_imagenet
 
 from torch.utils.tensorboard import SummaryWriter

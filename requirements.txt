@@ -1,0 +1,7 @@
+pyyaml
+timm
+pandas
+einops
+vit-pytorch
+nibabel
+tensorboard
