@@ -10,7 +10,7 @@
 #
 
 '''
-This file implements the training procedure for the training the surface vision transformers. 
+This file implements the training procedure to train a SiT model. =
 Models can be either trained:
     - from scratch
     - from pretrained weights (after self-supervision or ImageNet for instance)
@@ -18,33 +18,29 @@ Models can be either trained:
 Pretrained ImageNet models are downloaded from the Timm library. 
 '''
 
-
 import os
 import argparse
 import yaml
 import sys
 import timm
-
-sys.path.append('../')
-sys.path.append('./')
-
 from datetime import datetime
+
+import numpy as np
+import pandas as pd
 
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import numpy as np
-import pandas as pd
+from torch.optim.lr_scheduler import StepLR, CosineAnnealingLR, ReduceLROnPlateau
+from torch.utils.tensorboard import SummaryWriter
 
-from torch.optim.lr_scheduler import StepLR, CosineAnnealingLR
-from torch.optim.lr_scheduler import ReduceLROnPlateau
+sys.path.append('../')
+sys.path.append('./')
 
-
-from models.vit import ViT
-
+from models.sit import SiT
 from tools.utils import load_weights_imagenet
 
-from torch.utils.tensorboard import SummaryWriter
+
 
 
 def train(config):
@@ -78,52 +74,55 @@ def train(config):
     ##############################
 
     print('')
-    print('#'*30)
-    print('Loading data')
-    print('#'*30)
+    print('#'*35)
+    print('Loading data <> ico {} - sub-ico {}'.format(ico,sub_ico))
+    print('#'*35)
     print('')
 
-    print('LOADING DATA: ICO {} - sub-res ICO {}'.format(ico,sub_ico))
+    if str(config['data']['dataloader'])=='numpy':
 
-    train_data = np.load(os.path.join(data_path,'train_data.npy'))
-    train_label = np.load(os.path.join(data_path,'train_label.npy'))
+        train_data = np.load(os.path.join(data_path,'train_data.npy'))
+        train_label = np.load(os.path.join(data_path,'train_labels.npy'))
 
-    print('training data: {}'.format(train_data.shape))
+        print('training data: {}'.format(train_data.shape))
 
-    val_data = np.load(os.path.join(data_path,'validation_data.npy'))
-    val_label = np.load(os.path.join(data_path,'validation_label.npy'))
+        val_data = np.load(os.path.join(data_path,'validation_data.npy'))
+        val_label = np.load(os.path.join(data_path,'validation_labels.npy'))
 
-    print('validation data: {}'.format(val_data.shape))
+        print('validation data: {}'.format(val_data.shape))
 
-    train_data_dataset = torch.utils.data.TensorDataset(torch.from_numpy(train_data).float(),
-                                                       torch.from_numpy(train_label).float())
+        train_data_dataset = torch.utils.data.TensorDataset(torch.from_numpy(train_data).float(),
+                                                        torch.from_numpy(train_label).float())
 
-    val_data_dataset = torch.utils.data.TensorDataset(torch.from_numpy(val_data).float(),
-                                                       torch.from_numpy(val_label).float())
+        val_data_dataset = torch.utils.data.TensorDataset(torch.from_numpy(val_data).float(),
+                                                        torch.from_numpy(val_label).float())
 
-    train_loader = torch.utils.data.DataLoader(train_data_dataset,
-                                               batch_size = bs,
-                                               shuffle=True,
-                                               num_workers=16)
+        train_loader = torch.utils.data.DataLoader(train_data_dataset,
+                                                batch_size = bs,
+                                                shuffle=True,
+                                                num_workers=16)
 
-    val_loader = torch.utils.data.DataLoader(val_data_dataset,
-                                               batch_size = bs_val,
-                                               shuffle=False,
-                                               num_workers=16)
+        val_loader = torch.utils.data.DataLoader(val_data_dataset,
+                                                batch_size = bs_val,
+                                                shuffle=False,
+                                                num_workers=16)
 
 
-    test_data = np.load(os.path.join(data_path,'test_data.npy'))
-    test_label = np.load(os.path.join(data_path,'test_label.npy'))
+        test_data = np.load(os.path.join(data_path,'test_data.npy'))
+        test_label = np.load(os.path.join(data_path,'test_labels.npy'))
 
-    print('testing data: {}'.format(test_data.shape))
+        print('testing data: {}'.format(test_data.shape))
 
-    test_data_dataset = torch.utils.data.TensorDataset(torch.from_numpy(test_data).float(),
-                                                    torch.from_numpy(test_label).float())
+        test_data_dataset = torch.utils.data.TensorDataset(torch.from_numpy(test_data).float(),
+                                                        torch.from_numpy(test_label).float())
 
-    test_loader = torch.utils.data.DataLoader(test_data_dataset,
-                                            batch_size = bs_val,
-                                            shuffle=False,
-                                            num_workers=16)
+        test_loader = torch.utils.data.DataLoader(test_data_dataset,
+                                                batch_size = bs_val,
+                                                shuffle=False,
+                                                num_workers=16)
+    else:
+        raise('not implemented yet')
+    
               
     ##############################
     ######      LOGGING     ######
@@ -131,6 +130,15 @@ def train(config):
 
     # creating folders for logging. 
 
+    folder_to_save_model = os.path.join(folder_to_save_model,config['data']['task'])
+    try:
+        os.mkdir(folder_to_save_model)
+        print('Creating folder: {}'.format(folder_to_save_model))
+    except OSError:
+        print('folder already exist: {}'.format(folder_to_save_model))
+    
+
+    folder_to_save_model = os.path.join(folder_to_save_model,config['data']['data'])
     try:
         os.mkdir(folder_to_save_model)
         print('Creating folder: {}'.format(folder_to_save_model))
@@ -155,15 +163,12 @@ def train(config):
         folder_to_save_model = folder_to_save_model + '-ssl'
         if config['training']['dataset_ssl']=='hcp':
             folder_to_save_model = folder_to_save_model + '-hcp'
-        elif config['training']['dataset_ssl']=='dhcp-hcp':
-            folder_to_save_model = folder_to_save_model + '-dhcp-hcp'
         elif config['training']['dataset_ssl']=='dhcp':
             folder_to_save_model = folder_to_save_model + '-dhcp'
     if config['training']['finetuning']:
         folder_to_save_model = folder_to_save_model + '-finetune'
     else:
         folder_to_save_model = folder_to_save_model + '-freeze'
-
 
     try:
         os.mkdir(folder_to_save_model)
@@ -183,7 +188,7 @@ def train(config):
     print('#'*30)
     print('')
 
-    model = ViT(dim=config['transformer']['dim'],
+    model = SiT(dim=config['transformer']['dim'],
                     depth=config['transformer']['depth'],
                     heads=config['transformer']['heads'],
                     mlp_dim=config['transformer']['mlp_dim'],
@@ -250,12 +255,12 @@ def train(config):
                                 step_size= config['StepLR']['stepsize'],
                                 gamma= config['StepLR']['decay'])
 
-            if config['optimisation']['warmup']:
-
-                scheduler = GradualWarmupScheduler(optimizer,
-                                                   multiplier=1, 
-                                                   total_epoch=config['optimisation']['nbr_step_warmup'], 
-                                                   after_scheduler=scheduler)
+            #if config['optimisation']['warmup']:
+            #
+            #    scheduler = GradualWarmupScheduler(optimizer,
+            #                                       multiplier=1, 
+            #                                       total_epoch=config['optimisation']['nbr_step_warmup'], 
+            #                                       after_scheduler=scheduler)
 
         
         if config['optimisation']['scheduler'] == 'CosineDecay':
@@ -265,12 +270,12 @@ def train(config):
                                         eta_min=LR/10,
                                         )
 
-            if config['optimisation']['warmup']:
-
-                scheduler = GradualWarmupScheduler(optimizer,
-                                                   multiplier=1, 
-                                                   total_epoch=config['optimisation']['nbr_step_warmup'], 
-                                                   after_scheduler=scheduler)
+            #if config['optimisation']['warmup']:
+            #
+            #    scheduler = GradualWarmupScheduler(optimizer,
+            #                                       multiplier=1, 
+            #                                       total_epoch=config['optimisation']['nbr_step_warmup'], 
+            #                                       after_scheduler=scheduler)
 
         if config['optimisation']['scheduler'] == 'ReduceLROnPlateau':
             scheduler = ReduceLROnPlateau(optimizer,
@@ -280,12 +285,12 @@ def train(config):
                                             min_lr=0.000001
                                                 )
 
-            if config['optimisation']['warmup']:
-
-                scheduler = GradualWarmupScheduler(optimizer,
-                                                   multiplier=1, 
-                                                   total_epoch=config['optimisation']['nbr_step_warmup'], 
-                                                   after_scheduler=scheduler)
+            #if config['optimisation']['warmup']:
+            #
+            #    scheduler = GradualWarmupScheduler(optimizer,
+            #                                       multiplier=1, 
+            #                                       total_epoch=config['optimisation']['nbr_step_warmup'], 
+            #                                       after_scheduler=scheduler)
      
     else:
         # to use warmup without fancy scheduler
@@ -293,15 +298,15 @@ def train(config):
             scheduler = StepLR(optimizer,
                                 step_size=epochs)
 
-            scheduler = GradualWarmupScheduler(optimizer,
-                                                multiplier=1, 
-                                                total_epoch=config['optimisation']['nbr_step_warmup'], 
-                                                after_scheduler=scheduler)
+            #scheduler = GradualWarmupScheduler(optimizer,
+            #                                    multiplier=1, 
+            #                                    total_epoch=config['optimisation']['nbr_step_warmup'], 
+            #                                    after_scheduler=scheduler)
         
 
-    best_mae = 100000000
-    mae_val_epoch = 100000000
-    running_val_loss = 100000000
+    best_mae = np.inf
+    mae_val_epoch = np.inf
+    running_val_loss = np.inf
 
     print('Number of parameters: {:,}'.format(sum(p.numel() for p in model.parameters() if p.requires_grad)))
     print('')
