@@ -10,7 +10,7 @@
 #
 
 '''
-This file implements the training procedure to train a SiT model. =
+This file implements the training procedure to train a SiT model.
 Models can be either trained:
     - from scratch
     - from pretrained weights (after self-supervision or ImageNet for instance)
@@ -107,19 +107,16 @@ def train(config):
                                                 shuffle=False,
                                                 num_workers=16)
 
-
-        test_data = np.load(os.path.join(data_path,'test_data.npy'))
-        test_label = np.load(os.path.join(data_path,'test_labels.npy'))
-
-        print('testing data: {}'.format(test_data.shape))
-
-        test_data_dataset = torch.utils.data.TensorDataset(torch.from_numpy(test_data).float(),
-                                                        torch.from_numpy(test_label).float())
-
-        test_loader = torch.utils.data.DataLoader(test_data_dataset,
-                                                batch_size = bs_val,
-                                                shuffle=False,
-                                                num_workers=16)
+        if testing:
+            test_data = np.load(os.path.join(data_path,'test_data.npy'))
+            test_label = np.load(os.path.join(data_path,'test_labels.npy'))
+            print('testing data: {}'.format(test_data.shape))
+            test_data_dataset = torch.utils.data.TensorDataset(torch.from_numpy(test_data).float(),
+                                                            torch.from_numpy(test_label).float())
+            test_loader = torch.utils.data.DataLoader(test_data_dataset,
+                                                    batch_size = bs_val,
+                                                    shuffle=False,
+                                                    num_workers=16)
     else:
         raise('not implemented yet')
     
@@ -205,7 +202,7 @@ def train(config):
 
         print('Loading weights from self-supervision training')
 
-        model.load_state_dict(torch.load(config['weights']['ssl_mpp'],map_location=device)['model_state_dict'])
+        model.load_state_dict(torch.load(config['weights']['ssl_mpp'],map_location=device,strict=False)['model_state_dict'])
     
     if config['training']['load_weights_imagenet']:
 
@@ -236,8 +233,13 @@ def train(config):
                                                 weight_decay=config['SGD']['weight_decay'],
                                                 momentum=config['SGD']['momentum'],
                                                 nesterov=config['SGD']['nesterov'])
+    elif config['optimisation']['optimiser']=='AdamW':
+        print('using AdamW optimiser')
+        optimizer = optim.AdamW(model.parameters(),
+                                lr=LR,
+                                weight_decay=config['AdamW']['weight_decay'])
     else:
-        raise('not implemented yet')
+        raise('Optimiser not implemented yet')
 
     if not use_l1loss:
         criterion = nn.MSELoss(reduction='mean')
@@ -412,33 +414,41 @@ def train(config):
                 best_mae = mae_val_epoch
                 best_epoch = epoch+1
 
-                model.eval()
+                if testing:
 
-                print('starting testing')
+                    model.eval()
 
-                with torch.no_grad():
+                    print('starting testing')
 
-                    targets_ = []
-                    preds_ = []
+                    with torch.no_grad():
 
-                    for i, data in enumerate(test_loader):
+                        targets_ = []
+                        preds_ = []
 
-                        inputs, targets = data[0].to(device), data[1].to(device)
+                        for i, data in enumerate(test_loader):
 
-                        outputs = model(inputs)
+                            inputs, targets = data[0].to(device), data[1].to(device)
 
-                        targets_.append(targets.cpu().numpy())
-                        preds_.append(outputs.reshape(-1).cpu().numpy())
+                            outputs = model(inputs)
 
-                    mae_test_epoch = np.mean(np.abs(np.concatenate(targets_)- np.concatenate(preds_)))
+                            targets_.append(targets.cpu().numpy())
+                            preds_.append(outputs.reshape(-1).cpu().numpy())
 
-                    print('| TESTING RESULTS | MAE - {} |'.format(mae_test_epoch))
+                        mae_test_epoch = np.mean(np.abs(np.concatenate(targets_)- np.concatenate(preds_)))
+
+                        print('| TESTING RESULTS | MAE - {} |'.format(mae_test_epoch))
+
+                    df = pd.DataFrame()
+                    df['preds'] = np.concatenate(preds_).reshape(-1)
+                    df['targets'] = np.concatenate(targets_).reshape(-1)
+                    df.to_csv(os.path.join(folder_to_save_model, 'preds_test.csv'))
 
                     config['logging']['folder_model_saved'] = folder_to_save_model
                     config['results'] = {}
                     config['results']['best_mae'] = float(best_mae)
                     config['results']['best_epoch'] = best_epoch
-                    config['results']['best_test_mae'] = float(mae_test_epoch)
+                    if testing:
+                        config['results']['best_test_mae'] = float(mae_test_epoch)
                     config['results']['training_finished'] = False 
 
                     with open(os.path.join(folder_to_save_model,'hparams.yml'), 'w') as yaml_file:
@@ -475,7 +485,8 @@ def train(config):
     config['results'] = {}
     config['results']['best_mae'] = float(best_mae)
     config['results']['best_epoch'] = best_epoch
-    config['results']['best_test_mae'] = float(mae_test_epoch)
+    if testing:
+        config['results']['best_test_mae'] = float(mae_test_epoch)
     config['results']['training_finished'] = True 
 
     
@@ -485,13 +496,12 @@ def train(config):
 
     if testing:
         print('LOADING TESTING DATA: ICO {} - sub-res ICO {}'.format(ico,sub_ico))
-
         del train_data
         del val_data
         del model
         torch.cuda.empty_cache()
 
-        test_model = ViT(dim=config['transformer']['dim'],
+        test_model = SiT(dim=config['transformer']['dim'],
                     depth=config['transformer']['depth'],
                     heads=config['transformer']['heads'],
                     mlp_dim=config['transformer']['mlp_dim'],
