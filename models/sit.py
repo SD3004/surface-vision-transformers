@@ -23,7 +23,7 @@ from einops.layers.torch import Rearrange
 
 from vit_pytorch.vit import Transformer, Attention, FeedForward, PreNorm
 
-class ViT(nn.Module):
+class SiT(nn.Module):
     def __init__(self, *,
                         dim, 
                         depth,
