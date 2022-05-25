@@ -17,10 +17,10 @@ training:
   LR: 0.00001
   bs: 256
   bs_val: 64
-  epochs: 1000
+  epochs: 50
   gpu: 0
   l1loss: False
-  testing: False
+  testing: True
   val_epoch: 25
   load_weights_ssl: False
   load_weights_imagenet: False

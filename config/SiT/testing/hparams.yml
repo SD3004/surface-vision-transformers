@@ -5,15 +5,14 @@ resolution:
   sub_ico: 2
 
 data:
-  data_path: '/home/sd20/workspace/data/patches_registered_data/birth_age/'
+  data_path: "../data/dHCP/patches/patches_template_data/scan_age/"
+  dataloader: "numpy"
+  task: "scan_age"
+  data: "template"
 
-logging:
-  folder_to_save_model: "../logs/ViT/scan_age/registered/res_ico{}_sub_ico{}/"
-
-training:
-  LR: 0.0005
+testing:
   bs: 256
-  bs_val: 1
+  bs_test: 1
   epochs: 3000
   gpu: 1
   l1loss: false
@@ -22,16 +21,8 @@ training:
   load_weights_ssl: False
   load_weights_imagenet: False
   save_ckpt: True
+  folder: ../logs/SiT/scan_age/template/2022-05-25-10:36:24-tiny-finetune
 
-testing:
-  folder: ../logs/ViT/birth_age/registered/res_ico6_sub_ico2/2021-12-07-11:13:49-tiny-finetune/checkpoint.pth
-
-weights: 
-  ssl_mpp: '../logs/ViT/pretraining/registered/res_ico6_sub_ico1/2021-10-18-20:19:19/pretrained-net.pt'
-  imagenet: 'vit_tiny_patch16_224' #ViT(dim=192, depth=12, heads=3,mlp_dim=768,dim_head=64)
-  #imagenet: 'vit_small_patch16_224' #ViT(dim=384, depth=12, heads=6,mlp_dim=1536,dim_head=64)
-  #imagenet: 'vit_base_patch16_224' #ViT(dim=768, depth=12, heads=12,mlp_dim=3072,dim_head=64)
-            
 transformer:
   dim: 192 #192, 384, 768
   depth: 12 #12, 12, 12
@@ -43,31 +34,6 @@ transformer:
   dim_head: 64 #64
   dropout: 0.0
   emb_dropout: 0.0
-
-optimisation:
-  optimiser: SGD
-  use_scheduler: False
-  scheduler: CosineDecay  # CosineDecay, StepLR
-  warmup: True
-  nbr_step_warmup: 50
-
-Adam:
-  weight_decay: 0.
-
-AdamW:
-  weight_decay: 0.
-SGD:
-  weight_decay: 0.
-  momentum: 0.9
-  nesterov: False
-  
-StepLR: 
-  stepsize: 1000
-  decay: 0.5
-
-CosineDecay:
-  T_max: 5000
-  eta_min: 0.0001
 
 sub_ico_0:
     num_patches: 20
