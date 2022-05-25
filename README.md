@@ -5,7 +5,7 @@ This repository contains codebase to apply vision transformers on surface data. 
 
 Here, Surface Vision Transformer (**SiT**) is applied on cortical data for phenotype predictions.
 
-<img src="img.jpeg"
+<img src="./docs/img.jpeg"
      alt="Surface Vision Transformers"
      style="float: left; margin-right: 10px;" />
 

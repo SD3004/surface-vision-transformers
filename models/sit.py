@@ -10,15 +10,14 @@
 #
 
 '''
-This file contains the implementation of the ViT model: https://arxiv.org/abs/2010.11929
-adapted to the case of sampling a surface. 
-Input data is already separated into patches. 
+This file contains the implementation of the ViT model: https://arxiv.org/abs/2010.11929 adapted to the case of surface patching. 
+Input data is a sequence of non-overlapping patches. 
 '''
 
 import torch
 from torch import nn
 
-from einops import rearrange, repeat
+from einops import repeat
 from einops.layers.torch import Rearrange
 
 from vit_pytorch.vit import Transformer, Attention, FeedForward, PreNorm
