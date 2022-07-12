@@ -11,6 +11,8 @@ Here, Surface Vision Transformer (**SiT**) is applied on cortical data for pheno
 
 # Updates
 
+### 12.07.22
+
 ### 25.05.22
 
 - testing file and config 
