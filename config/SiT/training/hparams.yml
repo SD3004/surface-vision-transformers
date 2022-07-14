@@ -5,34 +5,34 @@ resolution:
   sub_ico: 2        ## patching grid resolution
 
 data:
-  data_path: "../data/dHCP/patches/patches_template_data/scan_age/"
-  dataloader: "numpy"
-  task: "scan_age"
-  data: "template"                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        
+  data_path: /home/sd20/data/dHCP/patches/{}/{}/TMI
+  task: scan_age #scan_age # birth_age
+  configuration: template
+  dataset: dHCP                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        
 
 logging:
   folder_to_save_model: "../logs/SiT/"
 
 training:
-  LR: 0.00001
+  LR: 0.0001
   bs: 256
   bs_val: 64
-  epochs: 50
+  epochs: 20
   gpu: 0
   l1loss: False
   testing: True
-  val_epoch: 25
+  val_epoch: 10
   load_weights_ssl: False
-  load_weights_imagenet: False
+  load_weights_imagenet: True
   save_ckpt: True
   finetuning: True
   dataset_ssl: 'dhcp'
 
 weights: 
-  ssl_mpp: '../logs/ViT/pretraining/registered/res_ico6_sub_ico2/2021-11-23-18:12:51-base/pretrained-net-final.pt'
-  #imagenet: 'vit_tiny_patch16_224' #ViT(dim=192, depth=12, heads=3,mlp_dim=768,dim_head=64)
+  ssl_mpp: '..' # path to .pt checkpoint
+  imagenet: 'vit_tiny_patch16_224' #ViT(dim=192, depth=12, heads=3,mlp_dim=768,dim_head=64)
   #imagenet: 'vit_small_patch16_224' #ViT(dim=384, depth=12, heads=6,mlp_dim=1536,dim_head=64)
-  imagenet: 'vit_base_patch16_224' #ViT(dim=768, depth=12, heads=12,mlp_dim=3072,dim_head=64)
+  #imagenet: 'vit_base_patch16_224' #ViT(dim=768, depth=12, heads=12,mlp_dim=3072,dim_head=64)
             
 transformer:
   dim: 192 #192, 384, 768
@@ -45,13 +45,10 @@ transformer:
   dim_head: 64 #64
   dropout: 0.0
   emb_dropout: 0.0
+  model: SiT
 
 optimisation:
   optimiser: SGD
-  use_scheduler: False
-  scheduler: ReduceLROnPlateau  # CosineDecay, StepLR, ReduceLROnPlateau
-  warmup: False
-  nbr_step_warmup: 50
 
 Adam:
   weight_decay: 0.

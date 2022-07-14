@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 # @Author: Simon Dahan
-# @Last Modified time: 2022-01-12 15:42:12
 #
 # Created on Fri Oct 01 2021
 #
@@ -9,11 +8,15 @@
 # Copyright (c) 2021 MeTrICS Lab
 #
 
+
 '''
 This file implements the training procedure to train a SiT model.
 Models can be either trained:
     - from scratch
     - from pretrained weights (after self-supervision or ImageNet for instance)
+Models can be trained for two tasks:
+    - age at scan prediction
+    - birth age prediction
 
 Pretrained ImageNet models are downloaded from the Timm library. 
 '''
@@ -25,22 +28,28 @@ import sys
 import timm
 from datetime import datetime
 
-import numpy as np
-import pandas as pd
+
+sys.path.append('../')
+sys.path.append('./')
+sys.path.append('../../')
 
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.optim.lr_scheduler import StepLR, CosineAnnealingLR, ReduceLROnPlateau
-from torch.utils.tensorboard import SummaryWriter
+import numpy as np
+import pandas as pd
 
-sys.path.append('../')
-sys.path.append('./')
+from torch.optim.lr_scheduler import StepLR
+from torch.optim.lr_scheduler import ReduceLROnPlateau
+
 
 from models.sit import SiT
-from tools.utils import load_weights_imagenet
 
+from warmup_scheduler import GradualWarmupScheduler
 
+from utils.utils import load_weights_imagenet
+
+from torch.utils.tensorboard import SummaryWriter
 
 
 def train(config):
@@ -53,15 +62,17 @@ def train(config):
     testing = config['training']['testing']
     bs = config['training']['bs']
     bs_val = config['training']['bs_val']
+    configuration = config['data']['configuration']
+    task = config['data']['task']
 
     ico = config['resolution']['ico']
     sub_ico = config['resolution']['sub_ico']
 
-    data_path = config['data']['data_path'].format(ico,sub_ico)
+    data_path = config['data']['data_path'].format(configuration,task)
     
     print(data_path)
 
-    folder_to_save_model = config['logging']['folder_to_save_model'].format(ico,sub_ico)
+    folder_to_save_model = config['logging']['folder_to_save_model']
 
     num_patches = config['sub_ico_{}'.format(sub_ico)]['num_patches']
     num_vertices = config['sub_ico_{}'.format(sub_ico)]['num_vertices']
@@ -74,68 +85,62 @@ def train(config):
     ##############################
 
     print('')
-    print('#'*35)
-    print('Loading data <> ico {} - sub-ico {}'.format(ico,sub_ico))
-    print('#'*35)
+    print('#'*30)
+    print('Loading data')
+    print('#'*30)
     print('')
 
-    if str(config['data']['dataloader'])=='numpy':
+    print('LOADING DATA: ICO {} - sub-res ICO {}'.format(ico,sub_ico))
 
-        train_data = np.load(os.path.join(data_path,'train_data.npy'))
-        train_label = np.load(os.path.join(data_path,'train_labels.npy'))
+    #loading already processed and patched cortical surfaces. 
 
-        print('training data: {}'.format(train_data.shape))
+    train_data = np.load(os.path.join(data_path,'train_data.npy'))
+    train_label = np.load(os.path.join(data_path,'train_labels.npy'))
 
-        val_data = np.load(os.path.join(data_path,'validation_data.npy'))
-        val_label = np.load(os.path.join(data_path,'validation_labels.npy'))
+    print('training data: {}'.format(train_data.shape))
 
-        print('validation data: {}'.format(val_data.shape))
+    val_data = np.load(os.path.join(data_path,'validation_data.npy'))
+    val_label = np.load(os.path.join(data_path,'validation_labels.npy'))
 
-        train_data_dataset = torch.utils.data.TensorDataset(torch.from_numpy(train_data).float(),
-                                                        torch.from_numpy(train_label).float())
+    print('validation data: {}'.format(val_data.shape))
 
-        val_data_dataset = torch.utils.data.TensorDataset(torch.from_numpy(val_data).float(),
-                                                        torch.from_numpy(val_label).float())
+    train_data_dataset = torch.utils.data.TensorDataset(torch.from_numpy(train_data).float(),
+                                                    torch.from_numpy(train_label).float())
 
-        train_loader = torch.utils.data.DataLoader(train_data_dataset,
-                                                batch_size = bs,
-                                                shuffle=True,
-                                                num_workers=16)
-
-        val_loader = torch.utils.data.DataLoader(val_data_dataset,
-                                                batch_size = bs_val,
-                                                shuffle=False,
-                                                num_workers=16)
-
-        if testing:
-            test_data = np.load(os.path.join(data_path,'test_data.npy'))
-            test_label = np.load(os.path.join(data_path,'test_labels.npy'))
-            print('testing data: {}'.format(test_data.shape))
-            test_data_dataset = torch.utils.data.TensorDataset(torch.from_numpy(test_data).float(),
-                                                            torch.from_numpy(test_label).float())
-            test_loader = torch.utils.data.DataLoader(test_data_dataset,
-                                                    batch_size = bs_val,
-                                                    shuffle=False,
+    train_loader = torch.utils.data.DataLoader(train_data_dataset,
+                                                    batch_size = bs,
+                                                    shuffle=True,
                                                     num_workers=16)
-    else:
-        raise('not implemented yet')
     
-              
+    val_data_dataset = torch.utils.data.TensorDataset(torch.from_numpy(val_data).float(),
+                                                    torch.from_numpy(val_label).float())
+
+ 
+    val_loader = torch.utils.data.DataLoader(val_data_dataset,
+                                            batch_size = bs_val,
+                                            shuffle=False,
+                                            num_workers=16)
+
+    test_data = np.load(os.path.join(data_path,'test_data.npy'))
+    test_label = np.load(os.path.join(data_path,'test_labels.npy')).reshape(-1)
+
+    print('testing data: {}'.format(test_data.shape))
+    print('')
+
+    test_data_dataset = torch.utils.data.TensorDataset(torch.from_numpy(test_data).float(),
+                                                    torch.from_numpy(test_label).float())
+
+    test_loader = torch.utils.data.DataLoader(test_data_dataset,
+                                            batch_size = bs_val,
+                                            shuffle=False,
+                                            num_workers=16)
+
+
     ##############################
     ######      LOGGING     ######
     ##############################
 
     # creating folders for logging. 
-
-    folder_to_save_model = os.path.join(folder_to_save_model,config['data']['task'])
-    try:
-        os.mkdir(folder_to_save_model)
-        print('Creating folder: {}'.format(folder_to_save_model))
-    except OSError:
-        print('folder already exist: {}'.format(folder_to_save_model))
-    
-
-    folder_to_save_model = os.path.join(folder_to_save_model,config['data']['data'])
     try:
         os.mkdir(folder_to_save_model)
         print('Creating folder: {}'.format(folder_to_save_model))
@@ -160,6 +165,8 @@ def train(config):
         folder_to_save_model = folder_to_save_model + '-ssl'
         if config['training']['dataset_ssl']=='hcp':
             folder_to_save_model = folder_to_save_model + '-hcp'
+        elif config['training']['dataset_ssl']=='dhcp-hcp':
+            folder_to_save_model = folder_to_save_model + '-dhcp-hcp'
         elif config['training']['dataset_ssl']=='dhcp':
             folder_to_save_model = folder_to_save_model + '-dhcp'
     if config['training']['finetuning']:
@@ -175,6 +182,7 @@ def train(config):
 
     writer = SummaryWriter(log_dir=folder_to_save_model)
 
+
     ##############################
     #######     MODEL      #######
     ##############################
@@ -185,42 +193,33 @@ def train(config):
     print('#'*30)
     print('')
 
-    model = SiT(dim=config['transformer']['dim'],
-                    depth=config['transformer']['depth'],
-                    heads=config['transformer']['heads'],
-                    mlp_dim=config['transformer']['mlp_dim'],
-                    pool=config['transformer']['pool'], 
-                    num_patches=num_patches,
-                    num_classes=config['transformer']['num_classes'],
-                    num_channels=config['transformer']['num_channels'],
-                    num_vertices=num_vertices,
-                    dim_head=config['transformer']['dim_head'],
-                    dropout=config['transformer']['dropout'],
-                    emb_dropout=config['transformer']['emb_dropout'])
+    if config['transformer']['model'] == 'SiT':
+
+        model = SiT(dim=config['transformer']['dim'],
+                        depth=config['transformer']['depth'],
+                        heads=config['transformer']['heads'],
+                        mlp_dim=config['transformer']['mlp_dim'],
+                        pool=config['transformer']['pool'], 
+                        num_patches=num_patches,
+                        num_classes=config['transformer']['num_classes'],
+                        num_channels=config['transformer']['num_channels'],
+                        num_vertices=num_vertices,
+                        dim_head=config['transformer']['dim_head'],
+                        dropout=config['transformer']['dropout'],
+                        emb_dropout=config['transformer']['emb_dropout'])
     
     if config['training']['load_weights_ssl']:
 
         print('Loading weights from self-supervision training')
-
-        model.load_state_dict(torch.load(config['weights']['ssl_mpp'],map_location=device,strict=False)['model_state_dict'])
+        model.load_state_dict(torch.load(config['weights']['ssl_mpp'],map_location=device),strict=False)
     
     if config['training']['load_weights_imagenet']:
 
         print('Loading weights from imagenet pretraining')
-
         model_trained = timm.create_model(config['weights']['imagenet'], pretrained=True)
         new_state_dict = load_weights_imagenet(model.state_dict(),model_trained.state_dict(),config['transformer']['depth'])
         model.load_state_dict(new_state_dict)
     
-    if config['training']['finetuning']==False:
-            print('freezing all layers except mlp head')
-
-            for j, param in enumerate(model.parameters()):
-                if j<136:
-                    param.requires_grad = False
-                else:
-                    param.requires_grad = True
-
 
     model.to(device)
 
@@ -239,7 +238,7 @@ def train(config):
                                 lr=LR,
                                 weight_decay=config['AdamW']['weight_decay'])
     else:
-        raise('Optimiser not implemented yet')
+        raise('not implemented yet')
 
     if not use_l1loss:
         criterion = nn.MSELoss(reduction='mean')
@@ -247,68 +246,10 @@ def train(config):
         criterion = nn.L1Loss()
 
 
-    if config['optimisation']['use_scheduler']:
 
-        print('Using learning rate scheduler')
-
-        if config['optimisation']['scheduler'] == 'StepLR':
-
-            scheduler = StepLR(optimizer=optimizer,
-                                step_size= config['StepLR']['stepsize'],
-                                gamma= config['StepLR']['decay'])
-
-            #if config['optimisation']['warmup']:
-            #
-            #    scheduler = GradualWarmupScheduler(optimizer,
-            #                                       multiplier=1, 
-            #                                       total_epoch=config['optimisation']['nbr_step_warmup'], 
-            #                                       after_scheduler=scheduler)
-
-        
-        if config['optimisation']['scheduler'] == 'CosineDecay':
-
-            scheduler = CosineAnnealingLR(optimizer,
-                                        T_max = config['CosineDecay']['T_max'],
-                                        eta_min=LR/10,
-                                        )
-
-            #if config['optimisation']['warmup']:
-            #
-            #    scheduler = GradualWarmupScheduler(optimizer,
-            #                                       multiplier=1, 
-            #                                       total_epoch=config['optimisation']['nbr_step_warmup'], 
-            #                                       after_scheduler=scheduler)
-
-        if config['optimisation']['scheduler'] == 'ReduceLROnPlateau':
-            scheduler = ReduceLROnPlateau(optimizer,
-                                            factor=0.5,
-                                            patience=250,
-                                            cooldown=0,
-                                            min_lr=0.000001
-                                                )
-
-            #if config['optimisation']['warmup']:
-            #
-            #    scheduler = GradualWarmupScheduler(optimizer,
-            #                                       multiplier=1, 
-            #                                       total_epoch=config['optimisation']['nbr_step_warmup'], 
-            #                                       after_scheduler=scheduler)
-     
-    else:
-        # to use warmup without fancy scheduler
-        if config['optimisation']['warmup']:
-            scheduler = StepLR(optimizer,
-                                step_size=epochs)
-
-            #scheduler = GradualWarmupScheduler(optimizer,
-            #                                    multiplier=1, 
-            #                                    total_epoch=config['optimisation']['nbr_step_warmup'], 
-            #                                    after_scheduler=scheduler)
-        
-
-    best_mae = np.inf
-    mae_val_epoch = np.inf
-    running_val_loss = np.inf
+    best_mae = 100000000
+    mae_val_epoch = 100000000
+    running_val_loss = 100000000
 
     print('Number of parameters: {:,}'.format(sum(p.numel() for p in model.parameters() if p.requires_grad)))
     print('')
@@ -348,7 +289,7 @@ def train(config):
             optimizer.step()
 
             running_loss += loss.item()
-
+            
             targets_.append(targets.cpu().numpy())
             preds_.append(outputs.reshape(-1).cpu().detach().numpy())
 
@@ -357,21 +298,6 @@ def train(config):
         mae_epoch = np.mean(np.abs(np.concatenate(targets_) - np.concatenate(preds_)))
 
         writer.add_scalar('mae/train',mae_epoch, epoch+1)
-
-        if (epoch+1)%5==0:
-            if config['optimisation']['use_scheduler']:
-                if config['optimisation']['scheduler'] == 'ReduceLROnPlateau':
-                    if config['optimisation']['warmup']:
-                        if (epoch+1)<config['optimisation']['nbr_step_warmup']:
-                            print('| Epoch - {} | Loss - {} | MAE - {} | LR - {}'.format(epoch+1, running_loss/(i+1), round(mae_epoch,4), scheduler.get_lr()[0] ))
-                        else:
-                            print('| Epoch - {} | Loss - {} | MAE - {} | LR - {}'.format(epoch+1, running_loss/(i+1), round(mae_epoch,4),optimizer.param_groups[0]['lr'] ))
-                    else:
-                        print('| Epoch - {} | Loss - {} | MAE - {} | LR - {}'.format(epoch+1, running_loss/(i+1), round(mae_epoch,4),optimizer.param_groups[0]['lr'] ))
-                else:
-                    print('| Epoch - {} | Loss - {} | MAE - {} | LR - {}'.format(epoch+1, running_loss/(i+1), round(mae_epoch,4), scheduler.get_lr()[0] ))
-            else:
-                print('| Epoch - {} | Loss - {} | MAE - {} | LR - {}'.format(epoch+1, running_loss/(i+1), round(mae_epoch,4), optimizer.param_groups[0]['lr']))
 
         ##############################
         ######    VALIDATION    ######
@@ -408,87 +334,38 @@ def train(config):
 
             writer.add_scalar('mae/val',mae_val_epoch, epoch+1)
 
-            print('| Validation | Epoch - {} | Loss - {} | MAE - {} |'.format(epoch+1, running_val_loss, mae_val_epoch ))
+            print('| Validation | Epoch - {} | Loss - {:.4f} | MAE - {:.4f} |'.format(epoch+1, running_val_loss, mae_val_epoch ))
 
             if mae_val_epoch < best_mae:
                 best_mae = mae_val_epoch
                 best_epoch = epoch+1
 
-                if testing:
+                df = pd.DataFrame()
+                df['preds'] = np.concatenate(preds_).reshape(-1)
+                df['targets'] = np.concatenate(targets_).reshape(-1)
+                df.to_csv(os.path.join(folder_to_save_model, 'preds_test.csv'))
 
-                    model.eval()
+                config['logging']['folder_model_saved'] = folder_to_save_model
+                config['results'] = {}
+                config['results']['best_mae'] = float(best_mae)
+                config['results']['best_epoch'] = best_epoch
+                config['results']['training_finished'] = False 
 
-                    print('starting testing')
-
-                    with torch.no_grad():
-
-                        targets_ = []
-                        preds_ = []
-
-                        for i, data in enumerate(test_loader):
-
-                            inputs, targets = data[0].to(device), data[1].to(device)
-
-                            outputs = model(inputs)
-
-                            targets_.append(targets.cpu().numpy())
-                            preds_.append(outputs.reshape(-1).cpu().numpy())
-
-                        mae_test_epoch = np.mean(np.abs(np.concatenate(targets_)- np.concatenate(preds_)))
-
-                        print('| TESTING RESULTS | MAE - {} |'.format(mae_test_epoch))
-
-                    df = pd.DataFrame()
-                    df['preds'] = np.concatenate(preds_).reshape(-1)
-                    df['targets'] = np.concatenate(targets_).reshape(-1)
-                    df.to_csv(os.path.join(folder_to_save_model, 'preds_test.csv'))
-
-                    config['logging']['folder_model_saved'] = folder_to_save_model
-                    config['results'] = {}
-                    config['results']['best_mae'] = float(best_mae)
-                    config['results']['best_epoch'] = best_epoch
-                    if testing:
-                        config['results']['best_test_mae'] = float(mae_test_epoch)
-                    config['results']['training_finished'] = False 
-
-                    with open(os.path.join(folder_to_save_model,'hparams.yml'), 'w') as yaml_file:
-                        yaml.dump(config, yaml_file)
+                with open(os.path.join(folder_to_save_model,'hparams.yml'), 'w') as yaml_file:
+                    yaml.dump(config, yaml_file)
 
                 if config['training']['save_ckpt']:
-                    print('saving model')
+                    print('saving model checkpoint...')
                     torch.save(model.state_dict(), os.path.join(folder_to_save_model,'checkpoint.pth'))
-                    print('end saving model')
 
-        if config['optimisation']['use_scheduler']:
-            if config['optimisation']['scheduler'] == 'ReduceLROnPlateau':
-                scheduler.step(metrics=mae_val_epoch)
-                if config['optimisation']['warmup']:
-                    if (epoch+1)<config['optimisation']['nbr_step_warmup']:
-                        writer.add_scalar('LR',scheduler.get_lr()[0], epoch+1 )
-                    else:
-                        writer.add_scalar('LR',optimizer.param_groups[0]['lr'], epoch+1 )
-                else:
-                    writer.add_scalar('LR',optimizer.param_groups[0]['lr'], epoch+1 )
-            else:
-                scheduler.step()
-                writer.add_scalar('LR',optimizer.param_groups[0]['lr'], epoch+1 )
-        else:
-            if config['optimisation']['warmup']:
-                scheduler.step()
-                writer.add_scalar('LR',optimizer.param_groups[0]['lr'], epoch+1 )
-            else:
-                writer.add_scalar('LR',optimizer.param_groups[0]['lr'], epoch+1 )
     
-    print('Final results: best model obtained at epoch {} - mean average error {}'.format(best_epoch,best_mae))
+    print('Final results: best model obtained at epoch {} - mean absolute error {}'.format(best_epoch,best_mae))
 
     config['logging']['folder_model_saved'] = folder_to_save_model
     config['results'] = {}
     config['results']['best_mae'] = float(best_mae)
     config['results']['best_epoch'] = best_epoch
-    if testing:
-        config['results']['best_test_mae'] = float(mae_test_epoch)
     config['results']['training_finished'] = True 
-
     
     ##############################
     ######     TESTING      ######
@@ -496,6 +373,7 @@ def train(config):
 
     if testing:
         print('LOADING TESTING DATA: ICO {} - sub-res ICO {}'.format(ico,sub_ico))
+
         del train_data
         del val_data
         del model
@@ -540,7 +418,7 @@ def train(config):
 
             mae_test_epoch = np.mean(np.abs(np.concatenate(targets_)- np.concatenate(preds_)))
 
-            print('| TESTING RESULTS | MAE - {} |'.format( mae_test_epoch ))
+            print('| TESTING RESULTS | MAE - {:.4f} |'.format( mae_test_epoch ))
 
             config['results']['testing'] = float(mae_test_epoch)
 
