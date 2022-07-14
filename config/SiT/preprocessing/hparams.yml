@@ -5,17 +5,15 @@ resolution:
   sub_ico: 2
 
 data:
-  data_path_left: '/home/sd20/workspace/data/patches_registered_data/birth_age/'
-  data_path_right: '/home/sd20/workspace/data/patches_registered_data/birth_age/'
-  label_path: './labels/'
+  data_path:  /home/sd20/data/dHCP/merged_metrics/ico_6_msm/base/
+  label_path: ../labels/dHCP/
+  task: scan_age #scan_age #birth_age
+  configuration: template #template #native
+  split: train #train #validation
   channels: 4
 
 output:
   folder: ''
-
-sub_ico_0:
-    num_patches: 20
-    num_vertices: 2145 
 
 sub_ico_1:
     num_patches: 80 
