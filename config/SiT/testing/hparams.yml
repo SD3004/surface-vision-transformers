@@ -5,23 +5,15 @@ resolution:
   sub_ico: 2
 
 data:
-  data_path: "../data/dHCP/patches/patches_template_data/scan_age/"
-  dataloader: "numpy"
-  task: "scan_age"
-  data: "template"
+  data_path: ../data/{}/{}/
+  task: scan_age #scan_age #birth_age
+  configuration: template #template #native
+  split: validation
 
 testing:
-  bs: 256
   bs_test: 1
-  epochs: 3000
-  gpu: 1
-  l1loss: false
-  testing: True
-  val_epoch: 25
-  load_weights_ssl: False
-  load_weights_imagenet: False
-  save_ckpt: True
-  folder: ../logs/SiT/scan_age/template/2022-05-25-10:36:24-tiny-finetune
+  gpu: 0
+  path_to_ckpt: ../logs/SiT/2022-07-16-16:07:49-tiny-finetune
 
 transformer:
   dim: 192 #192, 384, 768
@@ -34,10 +26,6 @@ transformer:
   dim_head: 64 #64
   dropout: 0.0
   emb_dropout: 0.0
-
-sub_ico_0:
-    num_patches: 20
-    num_vertices: 2145 
 
 sub_ico_1:
     num_patches: 80 

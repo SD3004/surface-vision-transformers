@@ -23,9 +23,12 @@ def test(config):
     gpu = config['testing']['gpu']
     ico = config['resolution']['ico']
     sub_ico = config['resolution']['sub_ico']
-    data_path = config['data']['data_path'].format(ico,sub_ico)
     bs_test = config['testing']['bs_test']
-    folder_to_ckpt = config['testing']['folder']
+    folder_to_ckpt = config['testing']['path_to_ckpt']
+    split = config['data']['split']
+    configuration = config['data']['configuration']
+    task = config['data']['task']
+    data_path = config['data']['data_path'].format(task,configuration)
 
     device = torch.device("cuda:{}".format(gpu) if torch.cuda.is_available() else "cpu")
     print(device)
@@ -33,8 +36,8 @@ def test(config):
     num_patches = config['sub_ico_{}'.format(sub_ico)]['num_patches']
     num_vertices = config['sub_ico_{}'.format(sub_ico)]['num_vertices']
 
-    test_data = np.load(os.path.join(data_path,'test_data.npy'))
-    test_label = np.load(os.path.join(data_path,'test_labels.npy'))
+    test_data = np.load(os.path.join(data_path,'{}_data.npy').format(split))
+    test_label = np.load(os.path.join(data_path,'{}_labels.npy'.format(split)))
 
     print('testing data: {}'.format(test_data.shape))
 
@@ -44,7 +47,7 @@ def test(config):
     test_loader = torch.utils.data.DataLoader(test_data_dataset,
                                             batch_size = bs_test,
                                             shuffle=False,
-                                            num_workers=8)
+                                            num_workers=16)
 
 
     model = SiT(dim=config['transformer']['dim'],
