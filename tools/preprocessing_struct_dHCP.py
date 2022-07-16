@@ -32,15 +32,19 @@ def main(config):
     configuration = config['data']['configuration']
     split = config['data']['split']
     num_channels = config['data']['channels']
-    output_folder = config['output']['folder']
     split = config['data']['split']
     task = config['data']['task']
+    output_folder = config['output']['folder'].format(task,configuration)
 
-    path_to_data = config['data']['data_path'].format('configuration')
+    path_to_data = config['data']['data_path']
     label_path = config['data']['label_path']
 
     num_vertices = config['sub_ico_{}'.format(sub_ico)]['num_vertices']
     num_patches = config['sub_ico_{}'.format(sub_ico)]['num_patches']
+
+    print('')
+    print('Task: {} - Split: {} - Data: {}'.format(task,split,configuration))
+    print('')
 
     ####
 
@@ -81,19 +85,24 @@ def main(config):
     
     print('')
     print('#'*30)
-    print('#Saving: training data')
+    print('#Saving: {} {} data'.format(split,configuration))
     print('#'*30)
     print('')
+
+    try:
+        os.makedirs(output_folder,exist_ok=False)
+        print('Creating folder: {}'.format(output_folder))
+    except OSError:
+        print('folder already exist: {}'.format(output_folder))
     
-    filename = os.path.join(output_folder,'{}_data.npy'.format(split))
+    filename = os.path.join(output_folder,'{}_data.npy'.format(split,configuration))
     np.save(filename,data)
-    filename = os.path.join(output_folder,'{}_labels.npy'.format(split))
+    filename = os.path.join(output_folder,'{}_labels.npy'.format(split,configuration))
     labels = np.concatenate((labels,labels))
     np.save(filename,labels)
 
+    print('')
     print(data.shape,labels.shape)
-    import pdb;pdb.set_trace()
-
 
 if __name__ == '__main__':
 
