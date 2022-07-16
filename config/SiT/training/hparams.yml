@@ -5,25 +5,25 @@ resolution:
   sub_ico: 2        ## patching grid resolution
 
 data:
-  data_path: /home/sd20/data/dHCP/patches/{}/{}/TMI
+  data_path: ../data/{}/{}
   task: scan_age #scan_age # birth_age
-  configuration: native #template # native
+  configuration: template #template # native
   dataset: dHCP                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        
 
 logging:
   folder_to_save_model: "../logs/SiT/"
 
 training:
-  LR: 0.0001
+  LR: 0.00001
   bs: 256
-  bs_val: 64
-  epochs: 20
+  bs_val: 1
+  epochs: 30
   gpu: 0
   l1loss: False
-  testing: True
+  testing: False
   val_epoch: 10
   load_weights_ssl: False
-  load_weights_imagenet: True
+  load_weights_imagenet: False
   save_ckpt: True
   finetuning: True
   dataset_ssl: 'dhcp'

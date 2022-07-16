@@ -68,17 +68,23 @@ def train(config):
     ico = config['resolution']['ico']
     sub_ico = config['resolution']['sub_ico']
 
-    data_path = config['data']['data_path'].format(configuration,task)
+    data_path = config['data']['data_path'].format(task,configuration)
     
-    print(data_path)
-
     folder_to_save_model = config['logging']['folder_to_save_model']
 
     num_patches = config['sub_ico_{}'.format(sub_ico)]['num_patches']
     num_vertices = config['sub_ico_{}'.format(sub_ico)]['num_vertices']
 
     device = torch.device("cuda:{}".format(gpu) if torch.cuda.is_available() else "cpu")
+
+    print('')
+    print('#'*30)
+    print('Config')
+    print('#'*30)
+    print('')
+
     print(device)  
+    print(data_path)
 
     ##############################
     ######     DATASET      ######
@@ -121,19 +127,21 @@ def train(config):
                                             shuffle=False,
                                             num_workers=16)
 
-    test_data = np.load(os.path.join(data_path,'test_data.npy'))
-    test_label = np.load(os.path.join(data_path,'test_labels.npy')).reshape(-1)
+        
+    if testing:
+        test_data = np.load(os.path.join(data_path,'test_data.npy'))
+        test_label = np.load(os.path.join(data_path,'test_labels.npy')).reshape(-1)
 
-    print('testing data: {}'.format(test_data.shape))
-    print('')
+        print('testing data: {}'.format(test_data.shape))
+        print('')
 
-    test_data_dataset = torch.utils.data.TensorDataset(torch.from_numpy(test_data).float(),
-                                                    torch.from_numpy(test_label).float())
+        test_data_dataset = torch.utils.data.TensorDataset(torch.from_numpy(test_data).float(),
+                                                        torch.from_numpy(test_label).float())
 
-    test_loader = torch.utils.data.DataLoader(test_data_dataset,
-                                            batch_size = bs_val,
-                                            shuffle=False,
-                                            num_workers=16)
+        test_loader = torch.utils.data.DataLoader(test_data_dataset,
+                                                batch_size = bs_val,
+                                                shuffle=False,
+                                                num_workers=16)
 
 
     ##############################
@@ -294,10 +302,13 @@ def train(config):
             preds_.append(outputs.reshape(-1).cpu().detach().numpy())
 
             writer.add_scalar('loss/train', loss.item(), epoch+1)
-
+        
         mae_epoch = np.mean(np.abs(np.concatenate(targets_) - np.concatenate(preds_)))
 
         writer.add_scalar('mae/train',mae_epoch, epoch+1)
+        
+        if (epoch+1)%5==0:
+            print('| Epoch - {} | Loss - {:.4f} | MAE - {:.4f} | LR - {}'.format(epoch+1, running_loss/(i+1), round(mae_epoch,4), optimizer.param_groups[0]['lr']))
 
         ##############################
         ######    VALIDATION    ######
@@ -326,7 +337,6 @@ def train(config):
 
                     targets_.append(targets.cpu().numpy())
                     preds_.append(outputs.reshape(-1).cpu().numpy())
-
 
             writer.add_scalar('loss/val', running_val_loss, epoch+1)
 
