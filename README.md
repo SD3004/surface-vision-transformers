@@ -5,11 +5,16 @@ This repository contains codebase to apply vision transformers on surface data. 
 
 Here, Surface Vision Transformer (**SiT**) is applied on cortical data for phenotype predictions.
 
-<img src="./docs/img.jpeg"
+<img src="./docs/sit_gif.gif"
      alt="Surface Vision Transformers"
      style="float: left; margin-right: 10px;" />
 
 # Updates
+
+### 14.07.22
+- simplifying training script
+- single config file tasks (scan age / birth age) and data configurations (template / native)
+- adding mesh indices to extract non-overlapping triangular patches from a cortical mesh ico 6 sphere representation
 
 ### 25.05.22
 
