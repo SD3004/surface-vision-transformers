@@ -141,10 +141,10 @@ for i in *L*; do wb_command -metric-resample ${i} ../ico-6.R.surf.gii ../ico-6.L
 </details>
 
 
-7. Once this step is done, the preprocessing script can be used to prepare the training and validation numpy array files, per task (birth-age, scan-age) and data configuration (template, native). Set the parameters in the config file and run the preprocessing script in ./tools:
+7. Once this step is done, the preprocessing script can be used to prepare the training and validation numpy array files, per task (birth-age, scan-age) and data configuration (template, native). Set the parameters in the YAML file `config/preprocessing/hparams.yml` and run the `preprocessing.py` script in ./tools:
 
 ```
-python preprocessing.ipynb ../config/preprocessing/hparams.py
+python preprocessing.py ../config/preprocessing/hparams.yml
 ```
 
 # Commands
