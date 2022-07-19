@@ -11,27 +11,45 @@ Here, Surface Vision Transformer (**SiT**) is applied on cortical data for pheno
 
 # Updates
 
-### 14.07.22
-- simplifying training script
-- single config file tasks (scan age / birth age) and data configurations (template / native)
-- adding mesh indices to extract non-overlapping triangular patches from a cortical mesh ico 6 sphere representation
+<details>
+    <summary><b> V.1.0 - 18.07.22</b></summary>
+    Major codebase update - 18.07.22
+    <ul type="circle">
+        <li> birth age and scan age prediction tasks</li>
+        <li> simplifying training script </li>
+        <li> adding birth age prediction script </li>
+        <li> simplifying preprocessing script </li>
+        <li> ingle config file tasks (scan age / birth age) and data configurations (template / native)</li>
+        <li> adding mesh indices to extract non-overlapping triangular patches from a cortical mesh ico 6 sphere representation</li>
 
-### 25.05.22
+    </ul>
+</details>
 
-- testing file and config 
-- installation guidelines
-- data access 
+<details>
+    <summary><b> V.0.2</b></summary>
+    Update - 25.05.22
+    <ul type="circle">
+        <li> testing file and config </li>
+        <li> installation guidelines </li>
+        <li> data access </li>
+    </ul>
+</details>
 
-### 12.10.21
-
-Initial commits:
-
-- training script
-- README
-- config files training
-
+<details>
+    <summary><b> V.0.1</b></summary>
+    Initial commits - 12.10.21
+    <ul type="circle">
+        <li> training script </li>
+        <li> README </li>
+        <li> config file for training </li>
+    </ul>
+</details>
 
 # Installation
+
+## Connectome Workbench
+
+Connectome Workbench is a free software for visualising neuroimaging data and can be used for visualising cortical metrics on surfaces. Downloads and instructions [here](https://www.humanconnectome.org/software/connectome-workbench). 
 
 ## Conda usage
 
@@ -45,40 +63,87 @@ For docker support, please follow instructions in [docker.md](docs/docker.md)
 
 # Data 
 
-Data used for the task of scan age prediction comes from the [dHCP dataset](http://www.developingconnectome.org/). 
+The data used comes from the [dHCP dataset](http://www.developingconnectome.org/) for the tasks of scan age prediction and birth age prediction. Instructions for processing MRI scans to extract cortical metrics can be found in [S. Dahan et al 2021](https://arxiv.org/abs/2203.16414) and references cited in.
 
-## Accessing the data
 
-Neonatal data can be downloaded from the dHCP website.
 
-Instructions for processing MRI scans to extract cortical metrics can be found in [Surface Vision Transformers: Attention-Based Modelling applied to Cortical Analysis](https://arxiv.org/abs/2203.16414) and references cited in. 
+## Accessing processed data
 
-Otherwise, cortical surface metric already processed (as used in the SiT paper) are also available. 
+Train and validation sets of cortical surface metrics already processed as in [S. Dahan et al 2021](https://arxiv.org/abs/2203.16414) and [A. Fawaz et al 2021](https://www.biorxiv.org/content/10.1101/2021.12.01.470730v1) are available upon request. 
 
-To access the data please: 
-- Sign in [here](https://data.developingconnectome.org/app/template/Login.vm)
-- Sign the dHCP open access agreement
-- Forward the confirmation email to **slcn.challenge@gmail.com**
+However the test set is not currently publicly available as used as testing set in the [SLCN challenge](https://slcn.grand-challenge.org/) on surface learning alongside the MLCN workshop at MICCAI 2022. 
 
-## Connectome Workbench
+<details>
+    <summary><b> How to access the processed data?</b></summary>
+    <p>
+    To access the data please:
+    <br>
+        <ul type="circle">
+            <li>Sign in <a href="/https://data.developingconnectome.org/app/template/Login.vm">here</a> </li>
+            <li>Sign the dHCP open access agreement </li>
+            <li> Forward the confirmation email to <b> slcn.challenge@gmail.com</b>  </li>
+        </ul>
+    </br>
+    </p>
+</details>
+<details>
+  <summary><b> G-Node GIN repository</b></summary>
+      <p>
+      Once the confirmation has been sent, you will have access to the <b>G-Node GIN repository</b> containing the data already processed.
+      The data used for this project is in the zip files <i>regression_native_space_features.zip</i> and <i>regression_template_space_features.zip</i>. You also need to use the <i>ico-6.surf.gii</i> spherical mesh. 
+       <img src="./docs/g-node.png"
+        alt="Surface Vision Transformers"
+        style="float: left; margin-right: 6px;"/>
+      </p>
+</details>
 
-Connectome Workbench is a free software for visualising neuroimaging data and can be used for visualising cortical metrics on surfaces. Downloads and instructions [here](https://www.humanconnectome.org/software/connectome-workbench). 
 
-## Extracting Patches from surface data. 
+## Data preparation  training
 
-1. Create a template 6th-order icosphere (40962) using:
+Further preparation steps are required to give right and left hemispheres the same orientations before extracting the sequences of patches.
+
+1. Download zip files containing the cortical features. Data is in the format
+```
+{uid}_{hemi}.shape.gii. 
+```
+
+2. Download the **ico-6.surf.gii** spherical mesh that was used for the preprocessing steps. This icosphere is *by default* set to a CORTEX_RIGHT structure in workbench. 
+
+3. Rename the **ico-6.surf.gii** file as **ico-6.R.surf.gii**
+
+4. Create a new sphere by symetrising the current righ sphere
 
 ```
-wb_command -surface-create-sphere 40962 <sphere-out>
+wb_command -surface-flip-lr ico-6.R.surf.gii ico-6.L.surf.gii
+```
+5. Then set the structure of this new icosphere to CORTEX_LEFT
+```
+wb_command -set-structure ico-6.L.surf.gii CORTEX_LEFT
 ```
 
-2. Resample your cortical data using from your surface template this surface ico-6 template.
+6. Use the new left sphere to esample the left metric files
+```
+for i in *L*; do wb_command -metric-resample ${i} ../ico-6.R.surf.gii ../ico-6.L.surf.gii BARYCENTRIC ${i}; done
+```
+
+<details>
+  <summary><b> Example</b></summary>
+      <p>
+      Once symmetrised, both left and right hemispheres have the same orientation when visualised on a left hemipshere template. 
+       <img src="./docs/left_right_example.png"
+        alt="Surface Vision Transformers"
+        style="float: left; margin-right: 6px;"/>
+      </p>
+</details>
+
+
+7. Once this step is done, the preprocessing script can be used to prepare the training and validation numpy array files, per task and data configuration (template, native). This is done by running the script in ./tools:
 
 ```
-wb_command -metric-resample <metric-in> <current-sphere> <new-sphere> BARYCENTRIC <metric-out>
+python preprocessing.ipynb ../config/preprocessing/hparams.py
 ```
 
-3. Extract patches using the vertices indices provided in [triangle_indices.csv](tools/triangle_indices.md).
+Hyperparameters for the preprocessing can be modified in config/preprocessing/hparams.py
 
 # Commands
 
