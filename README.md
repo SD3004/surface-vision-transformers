@@ -89,7 +89,7 @@ Cortical surface metrics already processed as in [S. Dahan et al 2021](https://a
   <summary><b> G-Node GIN repository</b></summary>
       <p>
       Once the confirmation has been sent, you will have access to the <b>G-Node GIN repository</b> containing the data already processed.
-      The data used for this project is in the zip files <i>regression_native_space_features.zip</i> and <i>regression_template_space_features.zip</i>. You also need to use the <i>ico-6.surf.gii</i> spherical mesh. 
+      The data used for this project is in the zip files <i>`regression_native_space_features.zip`</i> and <i>`regression_template_space_features.zip`</i>. You also need to use the <i>`ico-6.surf.gii`</i> spherical mesh. 
        <img src="./docs/g-node.png"
         alt="Surface Vision Transformers"
         width="400" 
@@ -106,21 +106,21 @@ However the test set is not currently publicly available as used as testing set 
 
 Once the data is accessible, further preparation steps are required to get right and left metrics files in the same orientation, before extracting the sequences of patches.
 
-1. Download zip files containing the cortical features. Data is in the format
+1. Download zip files containing the cortical features: `regression_template_space_features.zip` and `regression_native_space_features.zip`. Data is in the format
 ```
 {uid}_{hemi}.shape.gii 
 ```
 
-2. Download the **ico-6.surf.gii** spherical mesh from the G-Node GIN repository. This icosphere is *by default* set to a CORTEX_RIGHT structure in workbench. 
+2. Download the `ico-6.surf.gii` spherical mesh from the G-Node GIN repository. This icosphere is *by default* set to a CORTEX_RIGHT structure in workbench. 
 
-3. Rename the **ico-6.surf.gii** file as **ico-6.R.surf.gii**
+3. Rename the `ico-6.surf.gii` file as `ico-6.R.surf.gii`
 
 4. Create a new sphere by symmetrising the righ sphere using workbench. In bash:
 
 ```
 wb_command -surface-flip-lr ico-6.R.surf.gii ico-6.L.surf.gii
 ```
-5. Then, set the structure of the new icosphere to CORTEX_LEFT. In bash:
+5. Then, set the structure of the new icosphere to `CORTEX_LEFT`. In bash:
 ```
 wb_command -set-structure ico-6.L.surf.gii CORTEX_LEFT
 ```
