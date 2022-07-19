@@ -21,7 +21,6 @@ Here, Surface Vision Transformer (**SiT**) is applied on cortical data for pheno
         <li> simplifying preprocessing script </li>
         <li> ingle config file tasks (scan age / birth age) and data configurations (template / native)</li>
         <li> adding mesh indices to extract non-overlapping triangular patches from a cortical mesh ico 6 sphere representation</li>
-
     </ul>
 </details>
 
@@ -63,15 +62,15 @@ For docker support, please follow instructions in [docker.md](docs/docker.md)
 
 # Data 
 
-The data used comes from the [dHCP dataset](http://www.developingconnectome.org/) for the tasks of scan age prediction and birth age prediction. Instructions for processing MRI scans to extract cortical metrics can be found in [S. Dahan et al 2021](https://arxiv.org/abs/2203.16414) and references cited in.
+Data used in this project comes from the [dHCP dataset](http://www.developingconnectome.org/). Instructions for processing MRI scans and extract cortical metrics can be found in [S. Dahan et al 2021](https://arxiv.org/abs/2203.16414) and references cited in.
+
+To simplify reproducibility of the work, data has been already processed and is made available by following the next guidelines. 
 
 
 
 ## Accessing processed data
 
-Train and validation sets of cortical surface metrics already processed as in [S. Dahan et al 2021](https://arxiv.org/abs/2203.16414) and [A. Fawaz et al 2021](https://www.biorxiv.org/content/10.1101/2021.12.01.470730v1) are available upon request. 
-
-However the test set is not currently publicly available as used as testing set in the [SLCN challenge](https://slcn.grand-challenge.org/) on surface learning alongside the MLCN workshop at MICCAI 2022. 
+Cortical surface metrics already processed as in [S. Dahan et al 2021](https://arxiv.org/abs/2203.16414) and [A. Fawaz et al 2021](https://www.biorxiv.org/content/10.1101/2021.12.01.470730v1) are available upon request. 
 
 <details>
     <summary><b> How to access the processed data?</b></summary>
@@ -93,41 +92,46 @@ However the test set is not currently publicly available as used as testing set 
       The data used for this project is in the zip files <i>regression_native_space_features.zip</i> and <i>regression_template_space_features.zip</i>. You also need to use the <i>ico-6.surf.gii</i> spherical mesh. 
        <img src="./docs/g-node.png"
         alt="Surface Vision Transformers"
+        width="400" 
+        height="300"
         style="float: left; margin-right: 6px;"/>
       </p>
 </details>
 
+**Training** and **validation** sets are available for the task of **birth-age** and **scan-age** prediction, in **template** and **native** configuration.
 
-## Data preparation  training
+However the test set is not currently publicly available as used as testing set in the [SLCN challenge](https://slcn.grand-challenge.org/) on surface learning alongside the MLCN workshop at MICCAI 2022. 
 
-Further preparation steps are required to give right and left hemispheres the same orientations before extracting the sequences of patches.
+## Data preparation for training
+
+Once the data is accessible, further preparation steps are required to get right and left metrics files in the same orientation, before extracting the sequences of patches.
 
 1. Download zip files containing the cortical features. Data is in the format
 ```
-{uid}_{hemi}.shape.gii. 
+{uid}_{hemi}.shape.gii 
 ```
 
-2. Download the **ico-6.surf.gii** spherical mesh that was used for the preprocessing steps. This icosphere is *by default* set to a CORTEX_RIGHT structure in workbench. 
+2. Download the **ico-6.surf.gii** spherical mesh from the G-Node GIN repository. This icosphere is *by default* set to a CORTEX_RIGHT structure in workbench. 
 
 3. Rename the **ico-6.surf.gii** file as **ico-6.R.surf.gii**
 
-4. Create a new sphere by symetrising the current righ sphere
+4. Create a new sphere by symmetrising the righ sphere using workbench. In bash:
 
 ```
 wb_command -surface-flip-lr ico-6.R.surf.gii ico-6.L.surf.gii
 ```
-5. Then set the structure of this new icosphere to CORTEX_LEFT
+5. Then, set the structure of the new icosphere to CORTEX_LEFT. In bash:
 ```
 wb_command -set-structure ico-6.L.surf.gii CORTEX_LEFT
 ```
 
-6. Use the new left sphere to esample the left metric files
+6. Use the new left sphere to resample all left metric files. In bash: 
 ```
 for i in *L*; do wb_command -metric-resample ${i} ../ico-6.R.surf.gii ../ico-6.L.surf.gii BARYCENTRIC ${i}; done
 ```
 
 <details>
-  <summary><b> Example</b></summary>
+  <summary><b> Example of left and right myelin maps</b></summary>
       <p>
       Once symmetrised, both left and right hemispheres have the same orientation when visualised on a left hemipshere template. 
        <img src="./docs/left_right_example.png"
@@ -137,13 +141,11 @@ for i in *L*; do wb_command -metric-resample ${i} ../ico-6.R.surf.gii ../ico-6.L
 </details>
 
 
-7. Once this step is done, the preprocessing script can be used to prepare the training and validation numpy array files, per task and data configuration (template, native). This is done by running the script in ./tools:
+7. Once this step is done, the preprocessing script can be used to prepare the training and validation numpy array files, per task (birth-age, scan-age) and data configuration (template, native). Set the parameters in the config file and run the preprocessing script in ./tools:
 
 ```
 python preprocessing.ipynb ../config/preprocessing/hparams.py
 ```
-
-Hyperparameters for the preprocessing can be modified in config/preprocessing/hparams.py
 
 # Commands
 
