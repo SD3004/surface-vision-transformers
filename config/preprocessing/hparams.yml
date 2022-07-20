@@ -5,7 +5,7 @@ resolution:
   sub_ico: 2
 
 data:
-  data_path:  /home/sd20/data/dHCP/merged_metrics/ico_6_msm/base/
+  data_path:  /data/dHCP/
   label_path: ../labels/dHCP/
   task: birth_age #scan_age #birth_age
   configuration: template #template #native

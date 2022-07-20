@@ -44,17 +44,17 @@ Here, Surface Vision Transformer (**SiT**) is applied on cortical data for pheno
     </ul>
 </details>
 
-# Installation
+# Installation & Set-up
 
-## Connectome Workbench
+## 1. Connectome Workbench
 
 Connectome Workbench is a free software for visualising neuroimaging data and can be used for visualising cortical metrics on surfaces. Downloads and instructions [here](https://www.humanconnectome.org/software/connectome-workbench). 
 
-## Conda usage
+## 2. Conda usage
 
 For PyTorch and dependencies installation with conda, please follow instructions in [install.md](docs/install.md).
 
-## Docker usage
+## 3. Docker usage
 
 **Coming soon**
 
@@ -68,7 +68,7 @@ To simplify reproducibility of the work, data has been already processed and is 
 
 
 
-## Accessing processed data
+## 1. Accessing processed data
 
 Cortical surface metrics already processed as in [S. Dahan et al 2021](https://arxiv.org/abs/2203.16414) and [A. Fawaz et al 2021](https://www.biorxiv.org/content/10.1101/2021.12.01.470730v1) are available upon request. 
 
@@ -102,11 +102,11 @@ Cortical surface metrics already processed as in [S. Dahan et al 2021](https://a
 
 However the test set is not currently publicly available as used as testing set in the [SLCN challenge](https://slcn.grand-challenge.org/) on surface learning alongside the MLCN workshop at MICCAI 2022. 
 
-## Data preparation for training
+## 2. Data preparation for training
 
 Once the data is accessible, further preparation steps are required to get right and left metrics files in the same orientation, before extracting the sequences of patches.
 
-1. Download zip files containing the cortical features: `regression_template_space_features.zip` and `regression_native_space_features.zip`. Data is in the format
+1. Download zip files containing the cortical features: `regression_template_space_features.zip` and `regression_native_space_features.zip`. Unzip the files. Data is in the format
 ```
 {uid}_{hemi}.shape.gii 
 ```
@@ -125,13 +125,35 @@ wb_command -surface-flip-lr ico-6.R.surf.gii ico-6.L.surf.gii
 wb_command -set-structure ico-6.L.surf.gii CORTEX_LEFT
 ```
 
-6. Use the new left sphere to resample all left metric files. In bash: 
+6. Use the new left sphere to resample all left metric files in the template and native data folder. In bash: 
 ```
+cd regression_template_space_features
+
+for i in *L*; do wb_command -metric-resample ${i} ../ico-6.R.surf.gii ../ico-6.L.surf.gii BARYCENTRIC ${i}; done
+```
+and 
+```
+cd regression_native_space_features
+
 for i in *L*; do wb_command -metric-resample ${i} ../ico-6.R.surf.gii ../ico-6.L.surf.gii BARYCENTRIC ${i}; done
 ```
 
+7. Set the structure of the right metric files to CORTEX_LEFT, in both template and native data folder. In bash: 
+```
+cd regression_template_space_features
+
+for i in *R*; do wb_command -set-structure ${i} CORTEX_LEFT; done
+```
+and
+```
+cd regression_native_space_features
+
+for i in *R*; do wb_command -set-structure ${i} CORTEX_LEFT; done
+```
+
+
 <details>
-  <summary><b> Example of left and right myelin maps</b></summary>
+  <summary><b> Example of left and right myelin maps after resampling</b></summary>
       <p>
       Once symmetrised, both left and right hemispheres have the same orientation when visualised on a left hemipshere template. 
        <img src="./docs/left_right_example.png"
@@ -141,13 +163,16 @@ for i in *L*; do wb_command -metric-resample ${i} ../ico-6.R.surf.gii ../ico-6.L
 </details>
 
 
-7. Once this step is done, the preprocessing script can be used to prepare the training and validation numpy array files, per task (birth-age, scan-age) and data configuration (template, native). Set the parameters in the YAML file `config/preprocessing/hparams.yml` and run the `preprocessing.py` script in ./tools:
+7. Once this step is done, the preprocessing script can be used to prepare the training and validation numpy array files, per task (birth-age, scan-age) and data configuration (template, native). 
+
+In the YAML file `config/preprocessing/hparams.yml`, change the path to data, set the parameters and run the `preprocessing.py` script in ./tools:
 
 ```
+cd tools
 python preprocessing.py ../config/preprocessing/hparams.yml
 ```
 
-# Commands
+# Training & Inference
 
 ## Training SiT
 
@@ -156,10 +181,11 @@ For training a SiT model, use the following command:
 ```
 python train.py ../config/SiT/training/hparams.yml
 ```
-Where all hyperparameters for training and model design models are to be set in the yaml file *hparams.yml*, such as: 
+Where all hyperparameters for training and model design models are to be set in the yaml file `config/preprocessing/hparams.yml`, such as: 
 
+- Transformer architecture
 - Training strategy: from scratch, ImageNet or SSL weights
-- Optimisation
+- Optimisation strategy
 - Patching configuration
 - Logging
 
