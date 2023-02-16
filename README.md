@@ -78,7 +78,7 @@ Cortical surface metrics already processed as in [S. Dahan et al 2021](https://a
     To access the data please:
     <br>
         <ul type="circle">
-            <li>Sign in <a href="/https://data.developingconnectome.org/app/template/Login.vm">here</a> </li>
+            <li>Sign in <a href="https://data.developingconnectome.org/app/template/Login.vm">here</a> </li>
             <li>Sign the dHCP open access agreement </li>
             <li> Forward the confirmation email to <b> slcn.challenge@gmail.com</b>  </li>
         </ul>
