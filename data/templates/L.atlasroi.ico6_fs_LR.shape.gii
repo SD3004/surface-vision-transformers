@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GIFTI xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:noNamespaceSchemaLocation="http://brainvis.wustl.edu/caret6/xml_schemas/GIFTI_Caret.xsd"
+       Version="1"
+       NumberOfDataArrays="1">
+   <MetaData>
+      <MD>
+         <Name><![CDATA[AnatomicalStructurePrimary]]></Name>
+         <Value><![CDATA[CortexLeft]]></Value>
+      </MD>
+      <MD>
+         <Name><![CDATA[ParentProvenance]]></Name>
+         <Value><![CDATA[L.atlasroi.ico6_fs_LR.shape.gii:
+wb_command -metric-resample L.atlasroi.32k_fs_LR.shape.gii Q1-Q6_RelatedParcellation210.L.sphere.32k_fs_LR.surf.gii dHCP/msm/ico-6-L.surf.gii BARYCENTRIC L.atlasroi.ico6_fs_LR.shape.gii
+
+]]></Value>
+      </MD>
+      <MD>
+         <Name><![CDATA[ProgramProvenance]]></Name>
+         <Value><![CDATA[Connectome Workbench
+Type: Command Line Application
+Version: 1.2.3
+Qt Compiled Version: 4.8.7
+Qt Runtime Version: 4.8.7
+Commit: unknown
+Commit Date: unknown
+Compiled with OpenMP: YES
+Compiler: c++ (/usr/bin)
+Compiler Version: 7.1.0
+Compiled Debug: NO
+Operating System: Linux
+]]></Value>
+      </MD>
+      <MD>
+         <Name><![CDATA[Provenance]]></Name>
+         <Value><![CDATA[wb_command -metric-math 'x>0' L.atlasroi.ico6_fs_LR.shape.gii -var x L.atlasroi.ico6_fs_LR.shape.gii]]></Value>
+      </MD>
+      <MD>
+         <Name><![CDATA[WorkingDirectory]]></Name>
+         <Value><![CDATA[/home/sd20/data/template_spheres]]></Value>
+      </MD>
+   </MetaData>
+   <LabelTable>
+      <Label Key="0" Red="1" Green="1" Blue="1" Alpha="0"><![CDATA[???]]></Label>
+   </LabelTable>
+<DataArray Intent="NIFTI_INTENT_NORMAL"
+           DataType="NIFTI_TYPE_FLOAT32"
+           ArrayIndexingOrder="RowMajorOrder"
+           Dimensionality="1"
+           Dim0="40962"
+           Encoding="GZipBase64Binary"
+           Endian="LittleEndian"
+           ExternalFileName=""
+           ExternalFileOffset="0">
+   <MetaData>
+   </MetaData>
+   <Data>eJzt3I2KozAQAOB9s3u1e/TlDgpB8msSM22/gQ+pa3ScxCjt4s/P3z8//+Pf8gm1Y73idB67jzlynqN53jlGpPP9dmnNTudCX1+ln9NI10XINUouPXnW6vou50JcrXHWane9vkvXvLEKPCU3z5iLAL5Paa7PPftelz33idno3dfpOjKu1IelPk3HXmk8nD4n4mrNKaVtautL2+2OFbVYWdfTfQsA0CP3LJV7xko/p8ueZ7Eoz3u7aperU6leIzW5Hqv3uLX9f0O/AAAAAJyU+76k9H3O7DGu+xv9HqiUGwAAAAAARJT7XnznMVa0reXZip3n2TqPT4tWv1y3bbV/sk6nrzsAPlPrvjNzf9pxX+s9ZiuPu3WZjdP9DQDEkT4b9DwrtJ4vRp4/7j6vtLYp7S9d9hxndZ1FnDh93UWiLv11SpcAAAAAAAAAAEBMM/87lv6fUK7NyD5z26Sfc21r+2xFLe9T9Rbjcfr6iUAd4iqN2d4xvOK66FnfyiXNeza3O9GqzWj9e7evrbvWY6QmK+q3sx92jv/oETn/0/MZAAAAAAAAAAAAAAAAAAAAADDu9e6QkXeJXNvk/t7zfpLcNqvfZxLl3Si1evScc61WtdiV/67orVWt3em+BgAAAAAAAAAAAAAAAAAAAAAAAAAAAJi14r3L3uW8pnafVLfWe8BX1mt33WZjZh938rluc3ossHY8CfHJ0bpuZq6vldfljmu7tg/z0XfE6fsTAAAAAADAVc9vGyO/gZQ+p8u7cad9hDqujNPjZVWtcmOltC5X45N5p7mM5P/EeDndt6fOW+TjdH8DAAAAAAAAwDcY+Y0+wu/8PTmM5Flr17O/6/bpsrfN03UaidP9HqVuI/n01DG37Yp+fOo6ZG48CSGE+O44fX8CYnrND7m5ovU5bWe+AWa15qPW/GI+AgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIsrF9W/X7XNtS/vK7eOJ8ynlOJpnb+674sl+vx5vJJ/X39Jl6xilfZaOk2sbpW5PRK42d/ZBHEIIIWLG6fsDEEtuXqjNFeYTAL7NqZjJN7eMdn67onaOPeddq8+JOu4e17nca+fUO+4+dXy9e/TMHSPjPHeNlNa/0/y8Mr8d+a9qX5snr9uX2p3on5kYye/0Oaw+fk+/91zDImbsmmffwY7zF+IdY2SeT9fX/i5EtDh9zwEAAAAAAAAAAAAAAADu+gXkZ3tv</Data>
+</DataArray>
+</GIFTI>
