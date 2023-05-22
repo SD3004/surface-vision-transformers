@@ -50,6 +50,7 @@ data:
   normalise: sub-standardise #normalise,standardise, False
   modality: cortical_metrics #cortical_metrics, fMRI, memory_task
   clipping: True #True, False
+  folder_to_dhcp: metrics/ico_6_msm/base/regression_{}_space_features
 
 logging:
   folder_to_save_model: "{}/logs/{}/{}/{}/MS-SiT/ico_grid_{}/{}" #{dataset},{modality},{task},{grid resolution},{configuration}
