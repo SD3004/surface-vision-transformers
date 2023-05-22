@@ -23,6 +23,9 @@ warnings.warn = warn
 sys.path.append('./')
 sys.path.append('../')
 sys.path.append('../../')
+sys.path.append('../models/')
+sys.path.append('./workspace/surface-vision-transformers/')
+
 
 import numpy as np
 import pandas as pd
@@ -35,7 +38,7 @@ from torch.utils.tensorboard import SummaryWriter
 from models.sit import SiT
 from models.ms_sit import MSSiT
 from models.ms_sit_shifted import MSSiT_shifted
-from models.sphericalunet import sphericalunet_regression
+#from models.sphericalunet import sphericalunet_regression
 
 from tools.utils import load_weights_imagenet, logging_sit, logging_ms_sit, logging_spherical_unet, plot_regression_results_UKB, plot_regression_results_dHCP, plot_regression_results_HCP
 from tools.utils import get_data_path, get_dataloaders, get_dimensions, get_scheduler

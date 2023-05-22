@@ -37,9 +37,9 @@ ico_5_grid:
     num_vertices: 6
 
 data:
-  path_to_data: /home/sd20/data/
-  path_to_template: /home/sd20/workspace/surface-vision-transformers/data/templates
-  path_to_workdir: /home/sd20/workspace/surface-vision-transformers
+  path_to_data: /nfs/home/sdahan/workspace/data
+  path_to_template: /nfs/home/sdahan/workspace/surface-vision-transformers/data/templates
+  path_to_workdir: /nfs/home/sdahan/workspace/surface-vision-transformers
   dataset: dHCP #dHCP, HCP, UKB
   dataloader: metrics #metrics, numpy
   task: scan_age #scan_age, birth_age, sex
@@ -50,7 +50,7 @@ data:
   normalise: sub-standardise #normalise,standardise, False
   modality: cortical_metrics #cortical_metrics, fMRI, memory_task
   clipping: True #True, False
-  folder_to_dhcp: metrics/ico_6_msm/base/regression_{}_space_features
+  folder_to_dhcp: regression_{}_space_features
 
 logging:
   folder_to_save_model: "{}/logs/{}/{}/{}/MS-SiT/ico_grid_{}/{}" #{dataset},{modality},{task},{grid resolution},{configuration}
@@ -80,7 +80,7 @@ training:
   bs_val: 1
   epochs: 10
   val_epoch: 2
-  gpu: 1
+  gpu: 0
   loss: mse #mse, l1
   testing: True
   testing_debug: True

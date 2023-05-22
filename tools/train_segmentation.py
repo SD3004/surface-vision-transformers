@@ -23,6 +23,8 @@ warnings.warn = warn
 sys.path.append('./')
 sys.path.append('../')
 sys.path.append('../../')
+sys.path.append('../models/')
+sys.path.append('./workspace/surface-vision-transformers/')
 
 import numpy as np
 import pandas as pd
@@ -39,7 +41,7 @@ from monai.networks import one_hot
 
 from models.ms_sit_unet import MSSiTUNet
 from models.ms_sit_unet_shifted import MSSiTUNet_shifted
-from models.sphericalunet import sphericalunet_regression
+#from models.sphericalunet import sphericalunet_regression
 
 from tools.utils import load_weights_imagenet, logging_ms_sit, logging_spherical_unet
 from tools.utils import get_data_path_segmentation, get_dataloaders_segmentation, get_dimensions, get_scheduler, save_segmentation_results_UKB, save_segmentation_results_MindBoggle, save_segmentation_results_MindBoggle_test, save_segmentation_results_UKB_test
@@ -621,7 +623,7 @@ def train(config):
                 ###############################
                 
                 if dataset == 'UKB':
-                    save_segmentation_results_UKB(preds_,os.path.join(folder_to_save_model,'results_val','epoch_{}'.format(epoch+1)), epoch+1)
+                    save_segmentation_results_UKB(config,preds_,os.path.join(folder_to_save_model,'results_val','epoch_{}'.format(epoch+1)), epoch+1)
                 
                 elif dataset == 'MindBoggle':
                     save_segmentation_results_MindBoggle(config,preds_,os.path.join(folder_to_save_model,'results_val','epoch_{}'.format(epoch+1)), epoch+1)
@@ -798,7 +800,7 @@ def train(config):
             config['results_testing']['training_finished'] = False
 
             if dataset == 'UKB':
-                save_segmentation_results_UKB_test(preds_,os.path.join(folder_to_save_model,'results_test','epoch_{}'.format(epoch+1)), epoch+1)
+                save_segmentation_results_UKB_test(config,preds_,os.path.join(folder_to_save_model,'results_test','epoch_{}'.format(epoch+1)), epoch+1)
                 
             elif dataset == 'MindBoggle':
                 save_segmentation_results_MindBoggle_test(config,preds_,os.path.join(folder_to_save_model,'results_test','epoch_{}'.format(epoch+1)), epoch+1)
