@@ -160,7 +160,7 @@ def train(config):
 
     print('')
     print('#'*30)
-    print('######### Init model ########')
+    print('######### Init model #########')
     print('#'*30)
     print('')
 
@@ -621,7 +621,7 @@ def train(config):
                 ###############################
                 
                 if dataset == 'UKB':
-                    save_segmentation_results_UKB(preds_,os.path.join(folder_to_save_model,'results_val','epoch_{}'.format(epoch+1)), epoch+1)
+                    save_segmentation_results_UKB(config,preds_,os.path.join(folder_to_save_model,'results_val','epoch_{}'.format(epoch+1)), epoch+1)
                 
                 elif dataset == 'MindBoggle':
                     save_segmentation_results_MindBoggle(config,preds_,os.path.join(folder_to_save_model,'results_val','epoch_{}'.format(epoch+1)), epoch+1)
@@ -798,7 +798,7 @@ def train(config):
             config['results_testing']['training_finished'] = False
 
             if dataset == 'UKB':
-                save_segmentation_results_UKB_test(preds_,os.path.join(folder_to_save_model,'results_test','epoch_{}'.format(epoch+1)), epoch+1)
+                save_segmentation_results_UKB_test(config,preds_,os.path.join(folder_to_save_model,'results_test','epoch_{}'.format(epoch+1)), epoch+1)
                 
             elif dataset == 'MindBoggle':
                 save_segmentation_results_MindBoggle_test(config,preds_,os.path.join(folder_to_save_model,'results_test','epoch_{}'.format(epoch+1)), epoch+1)

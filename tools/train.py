@@ -35,7 +35,7 @@ from torch.utils.tensorboard import SummaryWriter
 from models.sit import SiT
 from models.ms_sit import MSSiT
 from models.ms_sit_shifted import MSSiT_shifted
-from models.sphericalunet import sphericalunet_regression
+#from models.sphericalunet import sphericalunet_regression
 
 from tools.utils import load_weights_imagenet, logging_sit, logging_ms_sit, logging_spherical_unet, plot_regression_results_UKB, plot_regression_results_dHCP, plot_regression_results_HCP
 from tools.utils import get_data_path, get_dataloaders, get_dimensions, get_scheduler
@@ -157,7 +157,7 @@ def train(config):
 
     print('')
     print('#'*30)
-    print('Init model')
+    print('######### Init model #########')
     print('#'*30)
     print('')
 
@@ -316,7 +316,7 @@ def train(config):
 
     print('')
     print('#'*30)
-    print('Starting training')
+    print('###### Starting training #####')
     print('#'*30)
     print('')
 
@@ -666,7 +666,7 @@ def train(config):
         
         print('')
         print('#'*30)
-        print('Starting testing')
+        print('###### Starting testing #####')
         print('#'*30)
         print('')
 

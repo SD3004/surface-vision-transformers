@@ -41,7 +41,7 @@ def get_data_path(config):
 
     if str(dataloader) == 'metrics':
         if dataset == 'dHCP':
-            data_path = os.path.join(config['data']['path_to_data'],dataset,'metrics/ico_6_{}'.format(sampling),'base','regression_{}_space_features'.format(configuration))
+            data_path = os.path.join(config['data']['path_to_data'],dataset,config['data']['folder_to_dhcp'].format(configuration))
         elif dataset == 'UKB':
             if modality == 'cortical_metrics':
                 if task == 'scan_age_msmall' or task == 'sex_msmall':
@@ -391,7 +391,7 @@ def plot_regression_results_UKB(predictions, targets,folder_to_save, epoch):
     plt.savefig(path_to_save)
 
 
-def save_segmentation_results_UKB(predictions,folder_to_save, epoch):
+def save_segmentation_results_UKB(config,predictions,folder_to_save, epoch):
 
     try:
         os.makedirs(folder_to_save,exist_ok=False)
@@ -399,7 +399,7 @@ def save_segmentation_results_UKB(predictions,folder_to_save, epoch):
     except OSError:
         pass
 
-    val_ids = pd.read_csv('/home/sd20/workspace/transformers/labels/UKB/cortical_metrics/segmentation/half/val.csv').ids
+    val_ids = pd.read_csv(os.path.join(config['data']['path_to_workdir'],'labels/UKB/cortical_metrics/segmentation/half/val.csv')).ids
     for i, id in enumerate(val_ids):
         save_label_UKB(predictions[i],os.path.join(folder_to_save,'{}_{}.label.gii'.format(str(id).split('.')[0],epoch)))
 
@@ -412,16 +412,16 @@ def save_segmentation_results_MindBoggle(config,predictions,folder_to_save, epoc
         pass
     
     if config['data']['hemi_part']=='all':
-        val_ids = pd.read_csv('/home/sd20/workspace/transformers/labels/MindBoggle/cortical_metrics/segmentation/half/val.csv').ids
+        val_ids = pd.read_csv(os.path.join(config['data']['path_to_workdir'],'labels/MindBoggle/cortical_metrics/segmentation/half/val.csv')).ids
     elif config['data']['hemi_part']=='left':
-        val_ids = pd.read_csv('/home/sd20/workspace/transformers/labels/MindBoggle/cortical_metrics/segmentation/half/val_L.csv').ids
+        val_ids = pd.read_csv(os.path.join(config['data']['path_to_workdir'],'labels/MindBoggle/cortical_metrics/segmentation/half/val_L.csv')).ids
     elif config['data']['hemi_part']=='right':
-        val_ids = pd.read_csv('/home/sd20/workspace/transformers/labels/MindBoggle/cortical_metrics/segmentation/half/val_R.csv').ids
+        val_ids = pd.read_csv(os.path.join(config['data']['path_to_workdir'],'labels/MindBoggle/cortical_metrics/segmentation/half/val_R.csv')).ids
 
     for i, id in enumerate(val_ids):
         save_label_MindBoggle(predictions[i],os.path.join(folder_to_save,'{}_{}.label.gii'.format(str(id).split('.')[0],epoch)))
 
-def save_segmentation_results_UKB_test(predictions,folder_to_save, epoch):
+def save_segmentation_results_UKB_test(config,predictions,folder_to_save, epoch):
 
     try:
         os.makedirs(folder_to_save,exist_ok=False)
@@ -429,7 +429,7 @@ def save_segmentation_results_UKB_test(predictions,folder_to_save, epoch):
     except OSError:
         pass
 
-    test_ids = pd.read_csv('/home/sd20/workspace/transformers/labels/UKB/cortical_metrics/segmentation/half/test.csv').ids
+    test_ids = pd.read_csv(os.path.join(config['data']['path_to_workdir'],'labels/UKB/cortical_metrics/segmentation/half/test.csv')).ids
     for i, id in enumerate(test_ids):
         save_label_UKB(predictions[i],os.path.join(folder_to_save,'{}_{}.label.gii'.format(str(id).split('.')[0],epoch)))
 
@@ -442,11 +442,11 @@ def save_segmentation_results_MindBoggle_test(config,predictions,folder_to_save,
         pass
     
     if config['data']['hemi_part']=='all':
-        test_ids = pd.read_csv('/home/sd20/workspace/transformers/labels/MindBoggle/cortical_metrics/segmentation/half/test.csv').ids
+        test_ids = pd.read_csv(os.path.join(config['data']['path_to_workdir'],'labels/MindBoggle/cortical_metrics/segmentation/half/test.csv')).ids
     elif config['data']['hemi_part']=='left':
-        test_ids = pd.read_csv('/home/sd20/workspace/transformers/labels/MindBoggle/cortical_metrics/segmentation/half/test_L.csv').ids
+        test_ids = pd.read_csv(os.path.join(config['data']['path_to_workdir'],'labels/MindBoggle/cortical_metrics/segmentation/half/test_L.csv')).ids
     elif config['data']['hemi_part']=='right':
-        test_ids = pd.read_csv('/home/sd20/workspace/transformers/labels/MindBoggle/cortical_metrics/segmentation/half/test_R.csv').ids
+        test_ids = pd.read_csv(os.path.join(config['data']['path_to_workdir'],'labels/MindBoggle/cortical_metrics/segmentation/half/test_R.csv')).ids
 
     for i, id in enumerate(test_ids):
         save_label_MindBoggle(predictions[i],os.path.join(folder_to_save,'{}_{}.label.gii'.format(str(id).split('.')[0],epoch)))
