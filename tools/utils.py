@@ -540,12 +540,13 @@ def save_reconstruction_mae(reconstructed_batch,
                             epoch,
                             folder_to_save_model,
                             split,
-                            path_to_workdir
+                            path_to_workdir,
+                            id,
                             ):
 
     try:
         os.makedirs(os.path.join(folder_to_save_model, 'reconstruction', '{}'.format(split)),exist_ok=False)
-        print('Creating folder: {}'.format(folder_to_save_model))
+        print('Creating folder: {}'.format(os.path.join(folder_to_save_model, 'reconstruction', '{}'.format(split))))
     except OSError:
         pass
 
@@ -559,7 +560,10 @@ def save_reconstruction_mae(reconstructed_batch,
         indices_to_extract = indices[str(i)].values
         original_sphere[indices_to_extract,:] = new_inputs[0,i,:,:].transpose()
 
-    save_gifti(original_sphere, os.path.join(folder_to_save_model,'reconstruction','{}'.format(split), 'original_sphere_{}.shape.gii'.format(epoch)))
+    save_gifti(original_sphere, os.path.join(folder_to_save_model,'reconstruction',split, 'original_sphere_{}_{}.shape.gii'.format(epoch,id)))
+
+    p1 = subprocess.Popen(['/home/sd20/software/workbench/bin_linux64/wb_command', '-set-structure',os.path.join(folder_to_save_model, 'reconstruction', split, 'original_sphere_{}_{}.shape.gii'.format(epoch,id)), 'CORTEX_LEFT'])
+    p1.wait()
 
     B, num_masked_patch, V = reconstructed_batch.shape
     rearrange_layer_masked = Rearrange('b m (v c) -> b c m v', b=B, m=num_masked_patch, c=num_channels, v=num_vertices)
@@ -585,7 +589,10 @@ def save_reconstruction_mae(reconstructed_batch,
             print('issue with indices: {}'.format(i))
 
     #import pdb;pdb.set_trace()
-    save_gifti(reconstructed_sphere, os.path.join(folder_to_save_model,'reconstruction', '{}'.format(split), 'reconstructed_sphere_{}.shape.gii'.format(epoch)))
+    save_gifti(reconstructed_sphere, os.path.join(folder_to_save_model,'reconstruction', '{}'.format(split), 'reconstructed_sphere_{}_{}.shape.gii'.format(epoch,id)))
+
+    p1 = subprocess.Popen(['/home/sd20/software/workbench/bin_linux64/wb_command', '-set-structure',os.path.join(folder_to_save_model, 'reconstruction', split, 'reconstructed_sphere_{}_{}.shape.gii'.format(epoch,id)), 'CORTEX_LEFT'])
+    p1.wait()
 
     sphere_patched = np.zeros((40962,num_channels),dtype=np.float32)
 
@@ -600,7 +607,11 @@ def save_reconstruction_mae(reconstructed_batch,
             sphere_patched[indices_to_extract,:] = new_inputs[0,i,:,:].transpose()
 
     #import pdb;pdb.set_trace()
-    save_gifti(sphere_patched, os.path.join(folder_to_save_model,'reconstruction', '{}'.format(split), 'sphere_patched_{}.shape.gii'.format(epoch)))
+    save_gifti(sphere_patched, os.path.join(folder_to_save_model,'reconstruction', '{}'.format(split), 'sphere_patched_{}_{}.shape.gii'.format(epoch,id)))
+
+    p1 = subprocess.Popen(['/home/sd20/software/workbench/bin_linux64/wb_command', '-set-structure',os.path.join(folder_to_save_model, 'reconstruction', split, 'sphere_patched_{}_{}.shape.gii'.format(epoch,id)), 'CORTEX_LEFT'])
+    p1.wait()
+
 
 def save_reconstruction_mae_test(reconstructed_batch,
                                 reconstructed_batch_unmasked,
