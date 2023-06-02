@@ -27,7 +27,9 @@ warnings.warn = warn
 sys.path.append('../')
 sys.path.append('../../')
 sys.path.append('./')
-from tools.utils import logging_sit, save_reconstruction_mae, get_data_path, get_dataloaders, get_dimensions, get_scheduler, save_reconstruction_mae_test
+sys.path.append('../models/')
+sys.path.append('./workspace/sMAE/')
+from tools.utils import logging_sit, save_reconstruction_mae, get_data_path, get_dataloaders, get_dimensions, get_scheduler
 
 from datetime import datetime
 
@@ -232,7 +234,8 @@ def train(config):
                     sub_ico=ico_grid,
                     num_channels=num_channels,
                     weights_init=config['pretraining_mae']['init_weights'],
-                    path_to_template=config['data']['path_to_template'])
+                    path_to_template=config['data']['path_to_template'],
+                    path_to_workdir= config['data']['path_to_workdir'])
     else:
         raise('not implemented yet')  
     
@@ -347,7 +350,8 @@ def train(config):
                                                 unmasked_indices[:1],
                                                 epoch+1,
                                                 folder_to_save_model,
-                                                split='train'
+                                                split='train',
+                                                path_to_workdir = config['data']['path_to_workdir'],
                                                 )
 
         
@@ -408,7 +412,8 @@ def train(config):
                                             unmasked_indices,
                                             epoch+1,
                                             folder_to_save_model,
-                                            split='val'
+                                            split='val',
+                                            path_to_workdir = config['data']['path_to_workdir'],
                                             )
 
                 config['results'] = {}

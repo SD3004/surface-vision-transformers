@@ -540,6 +540,7 @@ def save_reconstruction_mae(reconstructed_batch,
                             epoch,
                             folder_to_save_model,
                             split,
+                            path_to_workdir,
                             ):
 
     try:
@@ -548,7 +549,7 @@ def save_reconstruction_mae(reconstructed_batch,
     except OSError:
         pass
 
-    indices = pd.read_csv('../patch_extraction/msm/triangle_indices_ico_6_sub_ico_{}.csv'.format(ico_grid))
+    indices = pd.read_csv('{}/patch_extraction/msm/triangle_indices_ico_6_sub_ico_{}.csv'.format(path_to_workdir,ico_grid))
 
     original_sphere = np.zeros((40962,num_channels),dtype=np.float32)
 
