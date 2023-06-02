@@ -41,8 +41,8 @@ ico_5_grid:
 
 data:
   path_to_data: /home/sd20/data/
-  path_to_template: /home/sd20/data/template_spheres
-  path_to_workdir: /home/sd20/workspace/transformers
+  path_to_template: /home/sd20/workspace/sMAE/data/templates
+  path_to_workdir: /home/sd20/workspace/sMAE
   dataset: dHCP #dHCP, HCP, UKB
   dataloader: metrics #metrics, numpy
   task: birth_age #scan_age, birth_age, scan_age_msmall,

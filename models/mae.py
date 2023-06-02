@@ -31,6 +31,7 @@ class MAE(nn.Module):
         num_channels =1, 
         weights_init = False,
         path_to_template = '',
+        path_to_workdir = ''
 
     ):
         super().__init__()
@@ -77,7 +78,7 @@ class MAE(nn.Module):
         elif self.masking and self.dataset == 'HCP': # for UKB
             self.mask = np.array(nb.load('{}/L.atlasroi.40k_fs_LR.shape.gii'.format(path_to_template)).agg_data())
 
-        self.triangle_indices = pd.read_csv('../patch_extraction/{}/triangle_indices_ico_6_sub_ico_{}.csv'.format(sampling,sub_ico))
+        self.triangle_indices = pd.read_csv('{}/patch_extraction/{}/triangle_indices_ico_6_sub_ico_{}.csv'.format(path_to_workdir,sampling,sub_ico))
 
         if weights_init:
             self.mask_token = nn.Parameter(torch.zeros(decoder_dim))
