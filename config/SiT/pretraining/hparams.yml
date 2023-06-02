@@ -45,7 +45,7 @@ data:
   path_to_workdir: /home/sd20/workspace/sMAE
   dataset: dHCP #dHCP, HCP, UKB
   dataloader: metrics #metrics, numpy
-  task: birth_age #scan_age, birth_age, scan_age_msmall,
+  task: scan_age #scan_age, birth_age, scan_age_msmall,
   configuration: template
   masking: True #for dHCP only; True to mask the cut. 
   hemi: half #half, full
@@ -80,7 +80,7 @@ training:
   LR: 0.0003
   bs: 32
   bs_val: 1
-  epochs: 10
+  epochs: 2000
   val_epoch: 1
   log_training_epoch: 1 #default 5, fMRI 1
   log_iteration: 10
@@ -100,7 +100,7 @@ pretraining_mpp:
   swap_prob: 0.02 #0.02
 
 pretraining_mae:
-  mask_prob: 0.75
+  mask_prob: 0.25
   decoder_dim: 192 
   decoder_depth: 3 
   decoder_heads: 3
@@ -122,11 +122,11 @@ augmentation: # prob of augmentation techniques need to sum to 1
 ##################################  OPTIMISATION  ##################################
 
 optimisation:
-  optimiser: SGD #SGD, Adam 
+  optimiser: AdamW #SGD, Adam, AdamW
   use_scheduler: False
   scheduler: CosineDecay  # CosineDecay, StepLR
-  warmup: True
-  nbr_step_warmup: 50
+  warmup: False
+  nbr_step_warmup: 100
 
 SGD:
   weight_decay: 0.0 #default 0.0
