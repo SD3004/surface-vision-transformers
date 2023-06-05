@@ -222,7 +222,7 @@ def train(config):
                     decoder_depth=config['pretraining_mae']['decoder_depth'],
                     decoder_heads = config['pretraining_mae']['decoder_heads'],
                     decoder_dim_head = config['pretraining_mae']['decoder_dim_head'],
-                    use_pos_emb=config['pretraining_mae']['use_pos_embedding'],
+                    use_pos_embedding_decoder=config['pretraining_mae']['use_pos_embedding_decoder'],
                     use_all_patch_loss= config['pretraining_mae']['use_all_patch_loss'],
                     loss=config['pretraining_mae']['loss'],
                     mask=config['data']['masking'],
@@ -346,11 +346,12 @@ def train(config):
                                                 num_channels,
                                                 masked_indices[:1],
                                                 unmasked_indices[:1],
-                                                epoch*it_per_epoch + i +1+ epoch_to_start,
+                                                str(int(epoch*it_per_epoch + i +1+ epoch_to_start)).zfill(6),
                                                 folder_to_save_model,
                                                 split='train',
                                                 path_to_workdir=config['data']['path_to_workdir'],
-                                                id='train_0'
+                                                id='0',
+                                                server = config['SERVER']
                                                 )
 
         
@@ -400,27 +401,29 @@ def train(config):
 
                 if config['SSL'] == 'mae' and config['pretraining_mae']['save_reconstruction']:
                     for i, data in enumerate(val_loader):
+                        if i<3:
 
-                        inputs, _ = data[0].to(device), data[1].to(device)
+                            inputs, _ = data[0].to(device), data[1].to(device)
 
-                        mpp_loss, reconstructed_batch, reconstructed_batch_unmasked, masked_indices, unmasked_indices = ssl(inputs)
+                            mpp_loss, reconstructed_batch, reconstructed_batch_unmasked, masked_indices, unmasked_indices = ssl(inputs)
 
-                        save_reconstruction_mae(
-                                                reconstructed_batch.detach(),
-                                                reconstructed_batch_unmasked.detach(),    
-                                                inputs, 
-                                                num_patches,
-                                                num_vertices,
-                                                ico_grid,
-                                                num_channels,
-                                                masked_indices,
-                                                unmasked_indices,
-                                                epoch+1,
-                                                folder_to_save_model,
-                                                split='val',
-                                                path_to_workdir=config['data']['path_to_workdir'],
-                                                id = 'val_{}'.format(i)
-                                                )
+                            save_reconstruction_mae(
+                                                    reconstructed_batch.detach(),
+                                                    reconstructed_batch_unmasked.detach(),    
+                                                    inputs, 
+                                                    num_patches,
+                                                    num_vertices,
+                                                    ico_grid,
+                                                    num_channels,
+                                                    masked_indices,
+                                                    unmasked_indices,
+                                                    str(int(epoch+1)).zfill(6),
+                                                    folder_to_save_model,
+                                                    split='val',
+                                                    path_to_workdir=config['data']['path_to_workdir'],
+                                                    id = i,
+                                                    server = config['SERVER']
+                                                    )
 
                 config['results'] = {}
                 config['results']['best_epoch'] = best_epoch
