@@ -6,6 +6,7 @@
 MODEL: sit
 RECONSTRUCTION: False
 SSL: mae
+SERVER: False
 
 ##################################  DATA & TASK  ##################################
 
@@ -69,9 +70,9 @@ transformer:
   dim_head: 64 #64
   dropout: 0.
   emb_dropout: 0.
-  use_pos_embedding: True
+  use_pos_embedding: False
   init_weights: False #True
-  use_class_token: True #False #not using in MAE in any case
+  use_class_token: False #False #not using in MAE in any case
   trainable_pos_emb: False #False
 
 ##################################  TRAINING  ###################################
@@ -80,11 +81,11 @@ training:
   LR: 0.0003
   bs: 32
   bs_val: 1
-  epochs: 2000
-  val_epoch: 1
-  log_training_epoch: 1 #default 5, fMRI 1
-  log_iteration: 10
-  gpu: 0
+  epochs: 250
+  val_epoch: 10
+  log_training_epoch: 5 #default 5, fMRI 1
+  log_iteration: 20
+  gpu: 1
   restart: False
   early_stopping: False
   init_weights: False #ssl, imagenet or False
@@ -105,17 +106,17 @@ pretraining_mae:
   decoder_depth: 3 
   decoder_heads: 3
   decoder_dim_head: 64
-  use_pos_embedding: True
-  use_all_patch_loss: False #False
+  use_pos_embedding_decoder: True
+  use_all_patch_loss: True #False
   loss: mse #mse, l1 smoothl1
   init_weights: False #False
   save_reconstruction: True
 
 augmentation: # prob of augmentation techniques need to sum to 1
   prob_augmentation: 0.0  #probability of using any of the augmentation technique; 0.0 to not use any augmentation
-  prob_rotation: 0.0 #use rotation
+  prob_rotation: 0.2 #use rotation
   max_abs_deg_rotation: 15
-  prob_warping: 1.0 #use non-linear warping
+  prob_warping: 0.8 #use non-linear warping
   prob_shuffle: 0.0 #use shuffling of patches
   warp_ico: 2
 
@@ -125,7 +126,7 @@ optimisation:
   optimiser: AdamW #SGD, Adam, AdamW
   use_scheduler: False
   scheduler: CosineDecay  # CosineDecay, StepLR
-  warmup: False
+  warmup: True
   nbr_step_warmup: 100
 
 SGD:
