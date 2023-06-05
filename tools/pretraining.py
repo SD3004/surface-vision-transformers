@@ -312,17 +312,17 @@ def train(config):
 
             running_loss += mpp_loss.item()
 
-            writer.add_scalar('loss/train_it', mpp_loss.item(), epoch*it_per_epoch+1+epoch_to_start)
+            writer.add_scalar('loss/train_it', mpp_loss.item(),  epoch*it_per_epoch + i + 1 + epoch_to_start)
 
             if config['optimisation']['use_scheduler']:
                 scheduler.step()
-                writer.add_scalar('LR',optimizer.param_groups[0]['lr'], epoch+1+epoch_to_start )
+                writer.add_scalar('LR',optimizer.param_groups[0]['lr'],  epoch*it_per_epoch + i + 1 + epoch_to_start)
             else:
                 if config['optimisation']['warmup']:
                     scheduler.step()
-                    writer.add_scalar('LR',optimizer.param_groups[0]['lr'], epoch*it_per_epoch + i +1 )
+                    writer.add_scalar('LR',optimizer.param_groups[0]['lr'],  epoch*it_per_epoch + i + 1 + epoch_to_start)
                 else:
-                    writer.add_scalar('LR',optimizer.param_groups[0]['lr'], epoch*it_per_epoch + i +1 )
+                    writer.add_scalar('LR',optimizer.param_groups[0]['lr'],  epoch*it_per_epoch + i + 1 + epoch_to_start)
 
             ##############################
             #########  LOG IT  ###########
@@ -333,12 +333,11 @@ def train(config):
                 loss_pretrain_it = running_loss / (i+1)
 
                 if config['optimisation']['use_scheduler']:
-                    print('| It - {} | Loss - {:.4f} | LR - {}'.format(epoch*it_per_epoch + i +1, loss_pretrain_it, scheduler.get_last_lr()[0] ))
+                    print('| It - {} | Loss - {:.4f} | LR - {}'.format( epoch*it_per_epoch + i + 1 + epoch_to_start, loss_pretrain_it, scheduler.get_last_lr()[0] ))
                 else:
-                    print('| It - {} | Loss - {:.4f} | LR - {}'.format(epoch*it_per_epoch + i +1, loss_pretrain_it, optimizer.param_groups[0]['lr']))
+                    print('| It - {} | Loss - {:.4f} | LR - {}'.format( epoch*it_per_epoch + i + 1 + epoch_to_start, loss_pretrain_it, optimizer.param_groups[0]['lr']))
             
                 if config['SSL'] == 'mae' and config['pretraining_mae']['save_reconstruction']:
-                    print('saving reconstruction')
                     save_reconstruction_mae(reconstructed_batch.detach()[:1],
                                             reconstructed_batch_unmasked.detach()[:1],
                                                 inputs, 
@@ -424,7 +423,6 @@ def train(config):
                 with open(os.path.join(folder_to_save_model,'hparams.yml'), 'w') as yaml_file:
                         yaml.dump(config, yaml_file)
 
-                print('saving_model')
                 torch.save({ 'epoch':epoch+1+epoch_to_start,
                              'model_state_dict': model.state_dict(),
                              'optimizer_state_dict': optimizer.state_dict(),
