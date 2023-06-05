@@ -81,6 +81,8 @@ class SiT(nn.Module):
 
         self.use_pe = use_pe
         self.use_confounds = use_confounds
+        self.num_patches = num_patches
+        self.encoding_dim = dim
 
         self.transformer = Transformer(dim, depth, heads, dim_head, mlp_ratio*dim, dropout)
 

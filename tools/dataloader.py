@@ -159,7 +159,6 @@ def loader_metrics(data_path,
                                                         num_workers=32,)
     else:
         print('not using sampler...')
-        print('shuffling == {}'.format(not config['RECONSTRUCTION']))
 
         train_loader = torch.utils.data.DataLoader(train_dataset,
                                                     batch_size = config['training']['bs'],

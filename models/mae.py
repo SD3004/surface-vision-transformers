@@ -20,7 +20,7 @@ class MAE(nn.Module):
         decoder_depth = 1,
         decoder_heads = 8,
         decoder_dim_head = 64,
-        use_pos_emb = True,
+        use_pos_embedding_decoder = True,
         loss = 'mse',
         use_all_patch_loss = False,
         mask = True, 
@@ -39,20 +39,18 @@ class MAE(nn.Module):
         self.masking_ratio = masking_ratio
 
         # extract some hyperparameters and functions from encoder (vision transformer to be trained)
-
         self.encoder = encoder
-        num_patches, encoder_dim = encoder.pos_embedding.shape[-2:]
+        num_patches, encoder_dim = encoder.num_patches, encoder.encoding_dim
         self.to_patch, self.patch_to_emb = encoder.to_patch_embedding[:2]
-        pixel_values_per_patch = self.patch_to_emb.weight.shape[-1]
+        pixel_values_per_patch = self.patch_to_emb.weight.shape[-1] # channels*dim
 
         # decoder parameters
-
         self.enc_to_dec = nn.Linear(encoder_dim, decoder_dim) if encoder_dim != decoder_dim else nn.Identity()
         self.decoder = Transformer(dim = decoder_dim, depth = decoder_depth, heads = decoder_heads, dim_head = decoder_dim_head, mlp_dim = decoder_dim * 4)
         self.decoder_pos_emb = nn.Embedding(num_patches, decoder_dim) #fixed embedding
         self.to_pixels = nn.Linear(decoder_dim, pixel_values_per_patch)
 
-        self.use_pos_emb = use_pos_emb
+        self.use_pos_emb_decoder = use_pos_embedding_decoder
         self.loss = loss
         self.use_all_patch_loss = use_all_patch_loss
         self.masking = mask
@@ -66,10 +64,15 @@ class MAE(nn.Module):
         else:
             print('Using loss only on masked patches')
 
-        if self.use_pos_emb:
-            print('Using positional embedding in MAE')
+        if self.encoder.use_pe:
+            print('Using positional embedding in encoder MAE')
         else:
-            print('Not using positional embedding in MAE')
+            print('Not using positional embedding in encoder MAE')
+
+        if self.use_pos_emb_decoder:
+            print('Using positional embedding in decoder MAE')
+        else:
+            print('Not using positional embedding in decoder MAE')
 
         if self.masking and self.dataset == 'dHCP' and self.configuration == 'template': # for dHCP
             self.mask =np.array(nb.load('{}/week-40_hemi-left_space-dhcpSym_dens-40k_desc-medialwallsymm_mask.shape.gii'.format(path_to_template)).agg_data())
@@ -104,9 +107,9 @@ class MAE(nn.Module):
 
         # patch to encoder tokens and add positions
         tokens = self.patch_to_emb(patches)
-        if self.use_pos_emb:
+        if self.encoder.use_pe:
             tokens = tokens + self.encoder.pos_embedding[:, 1:(num_patches + 1)] #can be set to fixed in the encoder #no class token
-
+        
         # calculate of patches needed to be masked, and get random indices, dividing it up for mask vs unmasked
         num_masked = int(self.masking_ratio * num_patches)
         num_unmasked = num_patches - num_masked
@@ -128,12 +131,12 @@ class MAE(nn.Module):
         decoder_tokens = self.enc_to_dec(encoded_tokens)
 
         # reapply decoder position embedding to unmasked tokens
-        if self.use_pos_emb:
+        if self.use_pos_emb_decoder:
             decoder_tokens = decoder_tokens + self.decoder_pos_emb(unmasked_indices)
 
         # repeat mask tokens for number of masked, and add the positions using the masked indices derived above
         mask_tokens = repeat(self.mask_token, 'd -> b n d', b = batch, n = num_masked)
-        if self.use_pos_emb:
+        if self.use_pos_emb_decoder:
             mask_tokens = mask_tokens + self.decoder_pos_emb(masked_indices)
 
         # concat the masked tokens to the decoder tokens and attend with decoder
@@ -157,10 +160,8 @@ class MAE(nn.Module):
                 indices_to_extract = torch.Tensor(self.triangle_indices[str(k.cpu().numpy())].values).long()
                 indices_to_extract = indices_to_extract.to(device)
                 pred_pixel_values[i,j,:,:] = pred_pixel_values[i,j,:,:] * mask[indices_to_extract]
-
         pred_pixel_values = rearrange(pred_pixel_values, 'b n c v -> b n (v c)')
 
-        # calculate reconstruction loss
         pred_pixel_values_unmasked = rearrange(pred_pixel_values_unmasked, 'b n (v c) -> b n c v', b =batch, n=num_unmasked, c =self.num_channels,v=self.num_vertices_per_channel)
 
         for i in range(batch):
@@ -169,6 +170,8 @@ class MAE(nn.Module):
                 indices_to_extract = indices_to_extract.to(device)
                 pred_pixel_values_unmasked[i,j,:,:] = pred_pixel_values_unmasked[i,j,:,:] * mask[indices_to_extract]
         pred_pixel_values_unmasked = rearrange(pred_pixel_values_unmasked, 'b n c v -> b n (v c)')
+
+        # calculate reconstruction loss
 
         if self.loss == 'mse':
             if self.use_all_patch_loss:
