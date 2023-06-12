@@ -41,10 +41,9 @@ ico_5_grid:
     num_vertices: 5
 
 data:
-
-  path_to_data: /nfs/home/sdahan/workspace/data
-  path_to_template: /nfs/home/sdahan/workspace/sMAE/data/templates
-  path_to_workdir: /nfs/home/sdahan/workspace/sMAE
+  path_to_data: /home/sd20/data/
+  path_to_template: /home/sd20/workspace/sMAE/data/templates
+  path_to_workdir: /home/sd20/workspace/sMAE
   dataset: dHCP #dHCP, HCP, UKB
   dataloader: metrics #metrics, numpy
   task: scan_age #scan_age, birth_age, scan_age_msmall,
@@ -54,7 +53,7 @@ data:
   normalise: sub-standardise #standardise-vertex-wise,standardise-channel-wise,False, sub-normalise, group-standardise,sub-standardise
   modality: cortical_metrics #cortical_metrics, fMRI, memory_task
   clipping: True # False
-  folder_to_dhcp: regression_{}_space_features
+  folder_to_dhcp: metrics/ico_6_msm/base/regression_{}_space_features
 
 logging:
   folder_to_save_model: "{}/logs/{}/{}/{}/{}/{}/SiT/ico_grid_{}/{}" #{dataset},{modality},{task},{grid resolution},{configuration}
@@ -110,7 +109,7 @@ pretraining_mae:
   decoder_heads: 3
   decoder_dim_head: 64
   use_pos_embedding_decoder: True
-  use_all_patch_loss: True #False
+  use_all_patch_loss: False #False
   loss: mse #mse, l1 smoothl1
   init_weights: False #False
   save_reconstruction: True

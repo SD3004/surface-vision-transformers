@@ -593,6 +593,10 @@ def save_reconstruction_mae(reconstructed_batch,
     #import pdb;pdb.set_trace()
     save_gifti(reconstructed_sphere, os.path.join(folder_to_save_model,'reconstruction', '{}'.format(split), 'recon_{}_{}_it_{}.shape.gii'.format(split,id,epoch)))
 
+    if not server:
+        p1 = subprocess.Popen(['/home/sd20/software/workbench/bin_linux64/wb_command', '-set-structure',os.path.join(folder_to_save_model, 'reconstruction', split, 'recon_{}_{}_it_{}.shape.gii'.format(split,id,epoch)), 'CORTEX_LEFT'])
+        p1.wait()
+
     reconstructed_sphere_mask_only = np.zeros((40962,num_channels),dtype=np.float32)
 
     for i in range(num_patches):
@@ -605,7 +609,7 @@ def save_reconstruction_mae(reconstructed_batch,
     save_gifti(reconstructed_sphere_mask_only, os.path.join(folder_to_save_model,'reconstruction', '{}'.format(split), 'recon_mask_{}_{}_it_{}.shape.gii'.format(split,id,epoch)))
 
     if not server:
-        p1 = subprocess.Popen(['/home/sd20/software/workbench/bin_linux64/wb_command', '-set-structure',os.path.join(folder_to_save_model, 'reconstruction', split, 'recon_{}_{}_it_{}.shape.gii'.format(split,id,epoch)), 'CORTEX_LEFT'])
+        p1 = subprocess.Popen(['/home/sd20/software/workbench/bin_linux64/wb_command', '-set-structure',os.path.join(folder_to_save_model, 'reconstruction', split, 'recon_mask_{}_{}_it_{}.shape.gii'.format(split,id,epoch)), 'CORTEX_LEFT'])
         p1.wait()
 
     sphere_patched = np.zeros((40962,num_channels),dtype=np.float32)
