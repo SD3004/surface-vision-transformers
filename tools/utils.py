@@ -66,6 +66,7 @@ def get_data_path_segmentation(config):
     dataset = config['data']['dataset']
     task = config['data']['task']
     modality = config['data']['modality']
+    configuration = config['data']['configuration']
 
     if str(dataloader) == 'metrics':
         if dataset == 'UKB':
@@ -85,11 +86,11 @@ def get_data_path_segmentation(config):
             if modality == 'cortical_metrics':
                 if task == 'segmentation':
                     if config['data']['masking_preprocess']:
-                        data_path = os.path.join(config['data']['path_to_data'],dataset,'mindboggle_merged_metrics_{}_mask'.format(config['data']['masking_preprocess']))
-                        labels_path = os.path.join(config['data']['path_to_data'],dataset,'mindboggle_resample_labels_ico6_{}_mask'.format(config['data']['masking_preprocess'])) 
+                        data_path = os.path.join(config['data']['path_to_data'],dataset,'{}/mindboggle_merged_metrics_{}_mask'.format(configuration,config['data']['masking_preprocess']))
+                        labels_path = os.path.join(config['data']['path_to_data'],dataset,'{}/mindboggle_resample_labels_ico6_{}_mask'.format(configuration,config['data']['masking_preprocess'])) 
                     else:
-                        data_path = os.path.join(config['data']['path_to_data'],dataset,'mindboggle_merged_metrics')
-                        labels_path = os.path.join(config['data']['path_to_data'],dataset,'mindboggle_resample_labels_ico6') 
+                        data_path = os.path.join(config['data']['path_to_data'],dataset,'{}/mindboggle_merged_metrics'.format(configuration))
+                        labels_path = os.path.join(config['data']['path_to_data'],dataset,'{}/mindboggle_resample_labels_ico6'.format(configuration)) 
                           
     else:
         raise('not implemented yet')
@@ -162,6 +163,8 @@ def get_dimensions(config):
         channels = config['transformer']['channels']
     elif config['MODEL']== 'spherical-unet':
         channels = config['spherical-unet']['channels']
+    elif config['MODEL']== 'monet':
+        channels = config['monet']['channels']
     num_channels = len(channels)
 
     if config['MODEL'] in ['sit','ms-sit']:    
@@ -359,6 +362,21 @@ def logging_ms_sit(config, pretraining=False):
 def logging_spherical_unet(config):
 
     folder_to_save_model = config['logging']['folder_to_save_model'].format(config['data']['path_to_workdir'],config['data']['dataset'],config['data']['modality'],config['data']['task'],config['data']['configuration'])
+    
+    if config['augmentation']['prob_augmentation']:
+        folder_to_save_model = os.path.join(folder_to_save_model,'augmentation')
+    else:
+        folder_to_save_model = os.path.join(folder_to_save_model,'no_augmentation')
+
+    date = datetime.today().strftime('%Y-%m-%d-%H:%M:%S')
+
+    folder_to_save_model = os.path.join(folder_to_save_model,date)
+
+    return folder_to_save_model
+
+def logging_monet(config):
+
+    folder_to_save_model = config['logging']['folder_to_save_model'].format(config['data']['path_to_workdir'],config['data']['dataset'],config['data']['modality'],config['data']['task'],'{}_mask'.format(config['data']['masking_preprocess']),config['mesh_resolution']['ico_grid'],config['data']['configuration'])
     
     if config['augmentation']['prob_augmentation']:
         folder_to_save_model = os.path.join(folder_to_save_model,'augmentation')

@@ -420,6 +420,10 @@ class dataset_cortical_surfaces_segmentation(Dataset):
             self.patching=False 
             self.channels = config['spherical-unet']['channels']
             self.num_channels = len(self.channels)
+        elif config['MODEL']== 'monet':
+            self.patching=False 
+            self.channels = config['monet']['channels']
+            self.num_channels = len(self.channels)
         else:
             raiseExceptions('model not implemented yet')
     

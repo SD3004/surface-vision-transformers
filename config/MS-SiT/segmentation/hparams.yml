@@ -1,7 +1,7 @@
 # @Author: Simon Dahan @SD3004
 # @Date:   31-08-2022 01:00:00
 
-MODEL: ms-sit
+MODEL: ms-sit #ms-sit, monet
 SCRIPT: train
 
 ##################################  DATA & TASK  ##################################
@@ -40,10 +40,10 @@ data:
   path_to_data: /home/sd20/data/
   path_to_template: /home/sd20/workspace/surface-vision-transformers/data/templates
   path_to_workdir: /home/sd20/workspace/surface-vision-transformers
-  dataset: UKB #dHCP, HCP, UKB, MindBoggle
+  dataset: MindBoggle #dHCP, HCP, UKB, MindBoggle
   dataloader: metrics #metrics, numpy
   task: segmentation #scan_age, birth_age, sex
-  configuration: template
+  configuration: MSMSulc #for MindBoggle: native, MSMSulc, freesurfer; for UKB: template
   masking: False #True to mask the cut. 
   masking_preprocess: False #UKB, individual
   hemi: half #half, full
@@ -61,16 +61,22 @@ transformer:
   dim: 48 #96, 48, 192
   depth: [2,2,6,2] # [1,1,3,1] [2,2,6,2]number of blocks per layer
   heads: [3,6,12,24] # number of head per layer [3,6,12,24] 
-  channels: [3,1] #[3,1] for UKB and [0,1] for mindboggle
+  channels: [0,1] #[3,1] for UKB and [0,1] for mindboggle
   window_size: [64,64,64,320] #320,80
   window_size_factor: 2
   mlp_ratio: 4
-  num_classes: 35  #32 for MindBoggle and 35 for UKB
+  num_classes: 32  #32 for MindBoggle and 35 for UKB
   dropout: 0.0
   attention_dropout: 0.0
   dropout_path: 0.0
   use_pos_emb: True
   shifted_attention: False
+
+monet:
+  num_features: [32,64,128,256,512,1024]
+  channels: [0] #[3,1] for UKB and [0,1] for mindboggle
+  num_classes: 32  #32 for MindBoggle and 35 for UKB
+  
 
 ##################################  TRAINING  ###################################
 

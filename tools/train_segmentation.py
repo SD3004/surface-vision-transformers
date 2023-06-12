@@ -14,11 +14,11 @@ import yaml
 import sys
 import timm
 from datetime import datetime
-#remove warnings
-def warn(*args, **kwargs):
-    pass
-import warnings
-warnings.warn = warn
+##remove warnings
+#def warn(*args, **kwargs):
+#    pass
+#import warnings
+#warnings.warn = warn
 
 sys.path.append('./')
 sys.path.append('../')
@@ -39,10 +39,13 @@ from monai.networks import one_hot
 
 from models.ms_sit_unet import MSSiTUNet
 from models.ms_sit_unet_shifted import MSSiTUNet_shifted
-from models.sphericalunet import sphericalunet_regression
+from models.monet import monet_segmentation
+
 
 from tools.utils import load_weights_imagenet, logging_ms_sit, logging_spherical_unet
-from tools.utils import get_data_path_segmentation, get_dataloaders_segmentation, get_dimensions, get_scheduler, save_segmentation_results_UKB, save_segmentation_results_MindBoggle, save_segmentation_results_MindBoggle_test, save_segmentation_results_UKB_test
+from tools.utils import get_data_path_segmentation, get_dataloaders_segmentation, get_dimensions, get_scheduler, \
+                        save_segmentation_results_UKB, save_segmentation_results_MindBoggle, logging_monet, \
+                        save_segmentation_results_MindBoggle_test, save_segmentation_results_UKB_test
 
 from tools.metrics import dice_coeff
 
@@ -142,6 +145,8 @@ def train(config):
         folder_to_save_model = logging_ms_sit(config) 
     elif config['MODEL'] == 'spherical-unet':
         folder_to_save_model = logging_spherical_unet(config)
+    elif config['MODEL'] == 'monet':
+        folder_to_save_model = logging_monet(config)
     else:
         raise('not implemented yet')
     
@@ -229,9 +234,11 @@ def train(config):
 
             
 
-    elif config['MODEL'] == 'spherical-unet':
-        model = sphericalunet_regression(num_features = config['spherical-unet']['num_features'],
-                                         in_channels=len(config['spherical-unet']['channels']))
+    elif config['MODEL'] == 'monet':
+        model = monet_segmentation(num_features=config['monet']['num_features'],
+                                    in_channels=len(config['monet']['channels']),
+                                    output_channels = config['monet']['num_classes'],
+                                    device=device)
 
     print('')
 
@@ -414,9 +421,17 @@ def train(config):
         for i, data in enumerate(train_loader):
  
             inputs, targets = data[0].to(device), data[1].to(device)
-            if config['MODEL']=='spherical-unet':
-                inputs = inputs.permute(2,1,0)
-            outputs = model(inputs)
+            if config['MODEL']=='monet':
+                edges = torch.LongTensor(np.load('../models/monet_utils/edge_ico_6.npy').T)
+                inputs = inputs.permute(2,1,0).squeeze(2)
+                #import pdb;pdb.set_trace()
+                outputs = model(inputs, edges)
+                outputs = outputs.permute(1,0).unsqueeze(0)
+                #import pdb;pdb.set_trace()
+            else:
+                #import pdb;pdb.set_trace()
+                outputs = model(inputs)
+                #import pdb;pdb.set_trace()
 
             optimizer.zero_grad()
             if config['training']['loss'] == 'ce':
@@ -565,9 +580,13 @@ def train(config):
 
                 for i, data in enumerate(val_loader):
                     inputs, targets = data[0].to(device), data[1].to(device)
-                    if config['MODEL']=='spherical-unet':
-                        inputs = inputs.permute(2,1,0)
-                    outputs = model(inputs)
+                    if config['MODEL']=='monet':
+                        inputs = inputs.permute(2,1,0).squeeze(2)
+                        #import pdb;pdb.set_trace()
+                        outputs = model(inputs, edges)
+                        outputs = outputs.permute(1,0).unsqueeze(0)
+                    else:
+                        outputs = model(inputs)
 
                     preds_.append(torch.argmax(torch.nn.functional.softmax(outputs,dim=1),dim=1).detach().cpu().numpy())
                     
@@ -747,9 +766,11 @@ def train(config):
                                 path_to_workdir=config['data']['path_to_workdir']
                                 )
 
-        elif config['MODEL'] == 'spherical-unet':
-            test_model = sphericalunet_regression(num_features = config['spherical-unet']['num_features'],
-                                            in_channels=len(config['spherical-unet']['channels']))
+        elif config['MODEL'] == 'monet':
+            test_model = monet_segmentation(num_features=config['monet']['num_features'],
+                                    in_channels=len(config['monet']['channels']),
+                                    output_channels = config['monet']['num_classes'],
+                                    device=device)
 
         test_model.load_state_dict(torch.load(os.path.join(folder_to_save_model,'checkpoint_best.pth'))['model_state_dict'])
         test_model.to(device)
@@ -770,9 +791,14 @@ def train(config):
             for i, data in enumerate(test_loader):
 
                 inputs, targets = data[0].to(device), data[1].to(device)
-                if config['MODEL']=='spherical-unet':
-                    inputs = inputs.permute(2,1,0)
-                outputs = test_model(inputs)
+
+                if config['MODEL']=='monet':
+                    inputs = inputs.permute(2,1,0).squeeze(2)
+                    #import pdb;pdb.set_trace()
+                    outputs = test_model(inputs, edges)
+                    outputs = outputs.permute(1,0).unsqueeze(0)
+                else:
+                    outputs = test_model(inputs)
 
                 preds_.append(torch.argmax(torch.nn.functional.softmax(outputs,dim=1),dim=1).detach().cpu().numpy())
 
