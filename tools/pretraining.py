@@ -180,7 +180,8 @@ def train(config):
                         use_confounds=use_confounds,
                         weights_init=config['transformer']['init_weights'],
                         use_class_token=config['transformer']['use_class_token'],
-                        trainable_pos_emb=config['transformer']['trainable_pos_emb'])
+                        trainable_pos_emb=config['transformer']['trainable_pos_emb'],
+                        no_class_emb = config['transformer']['no_class_emb'],)
 
 
     if config['training']['restart']:
@@ -217,8 +218,8 @@ def train(config):
 
         print('Pretrain using Masked AutoEncoder')
         ssl = MAE(encoder=model, 
-                    masking_ratio=config['pretraining_mae']['mask_prob'],
                     decoder_dim=config['pretraining_mae']['decoder_dim'],
+                    masking_ratio=config['pretraining_mae']['mask_prob'],
                     decoder_depth=config['pretraining_mae']['decoder_depth'],
                     decoder_heads = config['pretraining_mae']['decoder_heads'],
                     decoder_dim_head = config['pretraining_mae']['decoder_dim_head'],
@@ -337,8 +338,8 @@ def train(config):
             
                 if config['SSL'] == 'mae' and config['pretraining_mae']['save_reconstruction']:
                     #print('saving reconstruction')
-                    save_reconstruction_mae(reconstructed_batch.detach()[:1],
-                                            reconstructed_batch_unmasked.detach()[:1],
+                    save_reconstruction_mae(reconstructed_batch[:1],
+                                            reconstructed_batch_unmasked[:1],
                                                 inputs, 
                                                 num_patches,
                                                 num_vertices,
@@ -387,6 +388,7 @@ def train(config):
                         mpp_loss, _ = ssl(inputs)
 
                     running_val_loss += mpp_loss.item()
+                
 
             loss_pretrain_val_epoch = running_val_loss /(i+1)
 
@@ -408,8 +410,8 @@ def train(config):
                             mpp_loss, reconstructed_batch, reconstructed_batch_unmasked, masked_indices, unmasked_indices = ssl(inputs)
 
                             save_reconstruction_mae(
-                                                    reconstructed_batch.detach(),
-                                                    reconstructed_batch_unmasked.detach(),    
+                                                    reconstructed_batch,
+                                                    reconstructed_batch_unmasked,    
                                                     inputs, 
                                                     num_patches,
                                                     num_vertices,

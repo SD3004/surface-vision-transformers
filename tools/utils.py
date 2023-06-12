@@ -41,7 +41,7 @@ def get_data_path(config):
 
     if str(dataloader) == 'metrics':
         if dataset == 'dHCP':
-            data_path = os.path.join(config['data']['path_to_data'],dataset,config['data']['folder_to_dhcp'].format(configuration))
+            data_path = os.path.join(config['data']['path_to_data'],dataset,'metrics/ico_6_{}'.format(sampling),'base','regression_{}_space_features'.format(configuration))
         elif dataset == 'UKB':
             if modality == 'cortical_metrics':
                 if task == 'scan_age_msmall' or task == 'sex_msmall':
@@ -286,7 +286,7 @@ def logging_sit(config, pretraining=False):
         folder_to_save_model = config['logging']['folder_to_save_model'].format(config['data']['path_to_workdir'],config['data']['dataset'],config['data']['modality'],'pretraining',config['data']['task'],config['SSL'],config['mesh_resolution']['ico_grid'],config['data']['configuration'])
     
     else:
-        folder_to_save_model = config['logging']['folder_to_save_model'].format(config['data']['path_to_workdir'],config['data']['modality'],config['data']['task'],config['mesh_resolution']['ico_grid'],config['data']['configuration'])
+        folder_to_save_model = config['logging']['folder_to_save_model'].format(config['data']['path_to_workdir'],config['data']['dataset'],config['data']['modality'],config['data']['task'],config['mesh_resolution']['ico_grid'],config['data']['configuration'])
     
     if config['augmentation']['prob_augmentation']:
         folder_to_save_model = os.path.join(folder_to_save_model,'augmentation')
@@ -592,6 +592,17 @@ def save_reconstruction_mae(reconstructed_batch,
 
     #import pdb;pdb.set_trace()
     save_gifti(reconstructed_sphere, os.path.join(folder_to_save_model,'reconstruction', '{}'.format(split), 'recon_{}_{}_it_{}.shape.gii'.format(split,id,epoch)))
+
+    reconstructed_sphere_mask_only = np.zeros((40962,num_channels),dtype=np.float32)
+
+    for i in range(num_patches):
+        indices_to_extract = indices[str(i)].values
+        if i in masked_indices:
+            ind =  (masked_indices[0] == i).nonzero(as_tuple=True)[0][0].cpu().numpy()
+            reconstructed_sphere_mask_only[indices_to_extract,:] = batch[0,:,ind,:].transpose()
+
+    #import pdb;pdb.set_trace()
+    save_gifti(reconstructed_sphere_mask_only, os.path.join(folder_to_save_model,'reconstruction', '{}'.format(split), 'recon_mask_{}_{}_it_{}.shape.gii'.format(split,id,epoch)))
 
     if not server:
         p1 = subprocess.Popen(['/home/sd20/software/workbench/bin_linux64/wb_command', '-set-structure',os.path.join(folder_to_save_model, 'reconstruction', split, 'recon_{}_{}_it_{}.shape.gii'.format(split,id,epoch)), 'CORTEX_LEFT'])
