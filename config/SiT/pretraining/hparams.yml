@@ -6,7 +6,7 @@
 MODEL: sit
 RECONSTRUCTION: False
 SSL: mae
-SERVER: False
+SERVER: True
 
 ##################################  DATA & TASK  ##################################
 
@@ -41,13 +41,12 @@ ico_5_grid:
     num_vertices: 5
 
 data:
-
   path_to_data: /nfs/home/sdahan/workspace/data
   path_to_template: /nfs/home/sdahan/workspace/sMAE/data/templates
   path_to_workdir: /nfs/home/sdahan/workspace/sMAE
   dataset: dHCP #dHCP, HCP, UKB
   dataloader: metrics #metrics, numpy
-  task: scan_age #scan_age, birth_age, scan_age_msmall,
+  task: birth_age #scan_age, birth_age, scan_age_msmall,
   configuration: template
   masking: True #for dHCP only; True to mask the cut. 
   hemi: half #half, full
@@ -62,31 +61,31 @@ logging:
 ###################################  MODEL  ####################################
 
 transformer:
-  dim: 192 #192, 384, 768
+  dim: 768 #192, 384, 768
   depth: 12 #12, 12, 12
-  heads: 3 #3, 6, 12
+  heads: 12 #3, 6, 12
   pool: 'cls'  # or 'mean'
   num_classes: 1
   channels: [0,1,2,3]
   dim_head: 64 #64
   dropout: 0.
   emb_dropout: 0.
-  use_pos_embedding: False
+  use_pos_embedding: True
   init_weights: False #True
   use_class_token: False #False #not using in MAE in any case
-  trainable_pos_emb: False #False
+  trainable_pos_emb: True #False
 
 ##################################  TRAINING  ###################################
 
 training:
   LR: 0.0003
-  bs: 32
+  bs: 8
   bs_val: 1
   epochs: 250
   val_epoch: 10
   log_training_epoch: 5 #default 5, fMRI 1
   log_iteration: 20
-  gpu: 1
+  gpu: 0
   restart: False
   early_stopping: False
   init_weights: False #ssl, imagenet or False
@@ -102,8 +101,8 @@ pretraining_mpp:
   swap_prob: 0.02 #0.02
 
 pretraining_mae:
-  mask_prob: 0.25
-  decoder_dim: 192 
+  mask_prob: 0.50
+  decoder_dim: 384 
   decoder_depth: 3 
   decoder_heads: 3
   decoder_dim_head: 64
