@@ -239,7 +239,11 @@ def train(config):
 
     if config['training']['init_weights']=='ssl_mae':
         print('Loading weights from self-supervision training MAE from: {}'.format(config['weights']['ssl_mae']))
-        model.load_state_dict(torch.load(config['weights']['ssl_mae'],map_location=device)['model_state_dict'],strict=False)
+        model.load_state_dict(torch.load(config['weights']['ssl_mae'],map_location=device)['model_state_dict'],strict=True)
+    elif config['training']['init_weights']=='ssl_smae':
+        print('Loading weights from self-supervision training MAE from: {}'.format(config['weights']['ssl_smae']))
+        strict = False if task=='birth_age' else True
+        model.load_state_dict(torch.load(config['weights']['ssl_smae'],map_location=device)['model_state_dict'],strict=strict)
     elif config['training']['init_weights']=='ssl_mpp':
         print('Loading weights from self-supervision training MPP')
         #model.load_state_dict(torch.load(config['weights']['ssl_mpp'],map_location=device)['model_state_dict'],strict=False)

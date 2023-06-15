@@ -173,6 +173,7 @@ class SiT(nn.Module):
 
         x = self.transformer(x)
 
+
         x = x.mean(dim = 1) if self.pool == 'mean' else x[:, 0]
 
         x = self.to_latent(x)

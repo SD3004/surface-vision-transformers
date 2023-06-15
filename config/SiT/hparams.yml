@@ -64,30 +64,30 @@ transformer:
   pool: 'cls'  # 'cls' or 'mean'
   num_classes: 1
   #num_channels: 4 #cortical_metrics UKB/dHCP = 4; fMRI UKB = 490
-  channels: [0,1,2,3]
+  channels: [0,1]
   dim_head: 64 #64,32,16
   dropout: 0.0
   emb_dropout: 0.0
-  use_pos_embedding: 'trainable' #'trainable', 'sin-cos', False
+  use_pos_embedding: 'sin-cos' #'trainable', 'sin-cos', False
   use_class_token: True #False
-  trainable_pos_emb: True #False #only for use_pos_embedding=trainable
+  trainable_pos_emb: False #False #only for use_pos_embedding=trainable
   no_class_emb: False #to use pos emb in the class token -> False, else True
   init_weights: False #True
 
 ##################################  TRAINING  ###################################
   
 training:
-  LR: 0.0003
+  LR: 0.0001
   bs: 32
   bs_val: 1
-  epochs: 1000
-  val_epoch: 10
+  epochs: 250
+  val_epoch: 5
   log_training_epoch: 5 #default 5, fMRI 1
-  gpu: 0
+  gpu: 1
   loss: mse #mse, l1
   testing: True
   testing_debug: False
-  init_weights: False #ssl_mae, ssl_mpp, imagenet or False
+  init_weights: False #ssl_mae, ssl_smae, ssl_mpp, imagenet or False
   finetuning: True
   save_ckpt: True
   use_confounds: True
@@ -111,7 +111,9 @@ weights:
   ssl_mpp: ../logs/HCP/memory_task/pretraining/iq/mae/SiT/ico_grid_3/template/no_augmentation/2022-12-11-11:02:02-tiny-finetune/encoder-best.pt
   #ssl_mpp: ../logs/HCP/memory_task/pretraining/iq/mae/SiT/ico_grid_2/template/no_augmentation/2022-10-22-23:57:33-tiny-finetune/encoder-best.pt
   #ssl_mae: ../logs/dHCP/cortical_metrics/pretraining/scan_age/mae/SiT/ico_grid_2/template/no_augmentation/2023-06-05-13:56:19-tiny-finetune/encoder-best.pt
-  ssl_mae: ../logs/dHCP/cortical_metrics/pretraining/scan_age/mae/SiT/ico_grid_2/template/no_augmentation/2023-06-05-15:59:27-tiny-finetune/encoder-best.pt
+  #ssl_mae: ../logs/dHCP/cortical_metrics/pretraining/scan_age/mae/SiT/ico_grid_2/template/no_augmentation/2023-06-05-15:59:27-tiny-finetune/encoder-best.pt
+  ssl_mae: ../logs/dHCP/cortical_metrics/pretraining/scan_age/mae/SiT/ico_grid_2/template/no_augmentation/2023-06-14-10:14:29-tiny-finetune/encoder-best.pt
+  ssl_smae: ../logs/dHCP/cortical_metrics/pretraining/scan_age/smae/SiT/ico_grid_2/template/no_augmentation/2023-06-14-21:02:08-tiny-finetune/encoder-best.pt
   imagenet: 'vit_tiny_patch16_224' #ViT(dim=192, depth=12, heads=3,mlp_dim=768,dim_head=64)
   #imagenet: 'vit_small_patch16_224' #ViT(dim=384, depth=12, heads=6,mlp_dim=1536,dim_head=64)
   #imagenet: 'vit_base_patch16_224' #ViT(dim=768, depth=12, heads=12,mlp_dim=3072,dim_head=64)
@@ -127,12 +129,17 @@ augmentation: # prob of augmentation techniques need to sum to 1
 ##################################  OPTIMISATION  ##################################
   
 optimisation:
-  optimiser: AdamW
+  optimiser: SGD
   use_scheduler: False
   scheduler: CosineDecay  # CosineDecay, StepLR, ReduceLROnPlateau
   warmup: False
   nbr_step_warmup: 50
   momentum: 0.9 #default 0.
+  nesterov: False
+
+SGD:
+  weight_decay: 0. #default 0.0
+  momentum: 0.9 #default 0.0
   nesterov: False
 
 Adam:
