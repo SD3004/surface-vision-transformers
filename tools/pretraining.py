@@ -41,6 +41,7 @@ import numpy as np
 from models.sit import SiT
 from models.mpp import masked_patch_pretraining
 from models.mae import MAE
+from models.smae import sMAE
 
 from torch.utils.tensorboard import SummaryWriter
 
@@ -182,7 +183,8 @@ def train(config):
                         use_confounds=use_confounds,
                         weights_init=config['transformer']['init_weights'],
                         use_class_token=config['transformer']['use_class_token'],
-                        trainable_pos_emb=config['transformer']['trainable_pos_emb'])
+                        trainable_pos_emb=config['transformer']['trainable_pos_emb'],
+                        no_class_emb = config['transformer']['no_class_emb'],)
 
 
     if config['training']['restart']:
@@ -219,8 +221,8 @@ def train(config):
 
         print('Pretrain using Masked AutoEncoder')
         ssl = MAE(encoder=model, 
-                    masking_ratio=config['pretraining_mae']['mask_prob'],
                     decoder_dim=config['pretraining_mae']['decoder_dim'],
+                    masking_ratio=config['pretraining_mae']['mask_prob'],
                     decoder_depth=config['pretraining_mae']['decoder_depth'],
                     decoder_heads = config['pretraining_mae']['decoder_heads'],
                     decoder_dim_head = config['pretraining_mae']['decoder_dim_head'],
@@ -236,6 +238,27 @@ def train(config):
                     weights_init=config['pretraining_mae']['init_weights'],
                     path_to_template=config['data']['path_to_template'],
                     path_to_workdir= config['data']['path_to_workdir'])
+        
+    elif config['SSL'] == 'smae':
+
+        print('Pretrain using Masked AutoEncoder')
+        ssl = sMAE(encoder=model, 
+                    decoder_dim=config['pretraining_smae']['decoder_dim'],
+                    masking_ratio=config['pretraining_smae']['mask_prob'],
+                    decoder_depth=config['pretraining_smae']['decoder_depth'],
+                    decoder_heads = config['pretraining_smae']['decoder_heads'],
+                    decoder_dim_head = config['pretraining_smae']['decoder_dim_head'],
+                    loss=config['pretraining_smae']['loss'],
+                    dataset=dataset,
+                    configuration = configuration,
+                    num_channels=num_channels,
+                    weights_init=config['pretraining_smae']['init_weights'],
+                    no_class_emb_decoder=config['pretraining_smae']['no_class_emb_decoder'],
+                    mask=config['data']['masking'],
+                    path_to_template=config['data']['path_to_template'],
+                    path_to_workdir= config['data']['path_to_workdir'],
+                    sampling=sampling,
+                    sub_ico=ico_grid,)
     else:
         raise('not implemented yet')  
     
@@ -302,7 +325,7 @@ def train(config):
 
             optimizer.zero_grad()
 
-            if config['SSL'] == 'mae':
+            if config['SSL'] == 'mae' or config['SSL'] == 'smae':
                 mpp_loss, reconstructed_batch, reconstructed_batch_unmasked, masked_indices, unmasked_indices= ssl(inputs)
             elif config['SSL'] == 'mpp':
                 mpp_loss, _ = ssl(inputs)
@@ -337,10 +360,10 @@ def train(config):
                 else:
                     print('| It - {} | Loss - {:.4f} | LR - {}'.format( epoch*it_per_epoch + i + 1 + epoch_to_start, loss_pretrain_it, optimizer.param_groups[0]['lr']))
             
-                if config['SSL'] == 'mae' and config['pretraining_mae']['save_reconstruction']:
-                
-                    save_reconstruction_mae(reconstructed_batch.detach()[:1],
-                                            reconstructed_batch_unmasked.detach()[:1],
+                if (config['SSL'] == 'mae' and config['pretraining_mae']['save_reconstruction']) or (config['SSL'] == 'smae' and config['pretraining_smae']['save_reconstruction']) :
+                    #print('saving reconstruction')
+                    save_reconstruction_mae(reconstructed_batch[:1],
+                                            reconstructed_batch_unmasked[:1],
                                                 inputs, 
                                                 num_patches,
                                                 num_vertices,
@@ -383,12 +406,13 @@ def train(config):
 
                     inputs, _ = data[0].to(device), data[1].to(device)
 
-                    if config['SSL'] == 'mae':
+                    if config['SSL'] == 'mae' or config['SSL'] == 'smae':
                         mpp_loss, reconstructed_batch, reconstructed_batch_unmasked, masked_indices, unmasked_indices = ssl(inputs)
                     elif config['SSL'] == 'mpp':
                         mpp_loss, _ = ssl(inputs)
 
                     running_val_loss += mpp_loss.item()
+                
 
             loss_pretrain_val_epoch = running_val_loss /(i+1)
 
@@ -401,7 +425,7 @@ def train(config):
                 best_epoch = epoch+1+epoch_to_start
                 c_early_stop = 0
 
-                if config['SSL'] == 'mae' and config['pretraining_mae']['save_reconstruction']:
+                if (config['SSL'] == 'mae' and config['pretraining_mae']['save_reconstruction']) or (config['SSL'] == 'smae' and config['pretraining_smae']['save_reconstruction']):
                     for i, data in enumerate(val_loader):
                         if i<3:
 
@@ -410,8 +434,8 @@ def train(config):
                             mpp_loss, reconstructed_batch, reconstructed_batch_unmasked, masked_indices, unmasked_indices = ssl(inputs)
 
                             save_reconstruction_mae(
-                                                    reconstructed_batch.detach(),
-                                                    reconstructed_batch_unmasked.detach(),    
+                                                    reconstructed_batch,
+                                                    reconstructed_batch_unmasked,    
                                                     inputs, 
                                                     num_patches,
                                                     num_vertices,
@@ -435,6 +459,7 @@ def train(config):
 
                 with open(os.path.join(folder_to_save_model,'hparams.yml'), 'w') as yaml_file:
                         yaml.dump(config, yaml_file)
+
 
                 torch.save({ 'epoch':epoch+1+epoch_to_start,
                              'model_state_dict': model.state_dict(),

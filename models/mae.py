@@ -6,9 +6,13 @@ import numpy as np
 import nibabel as nb
 import pandas as pd
 from timm.models.layers import trunc_normal_
-
-
 from vit_pytorch.vit import Transformer
+
+torch.autograd.set_detect_anomaly(True)
+
+'''
+Code adapted to surfaces from https://github.com/lucidrains/vit-pytorch/blob/main/vit_pytorch/mae.py
+'''
 
 class MAE(nn.Module):
     def __init__(
@@ -58,6 +62,7 @@ class MAE(nn.Module):
         self.num_channels = num_channels
         self.configuration = configuration
         self.num_vertices_per_channel = pixel_values_per_patch // self.num_channels
+        self.decoder_dim = decoder_dim
 
         if self.use_all_patch_loss:
             print('Using loss on all patches')
@@ -108,12 +113,12 @@ class MAE(nn.Module):
         # patch to encoder tokens and add positions
         tokens = self.patch_to_emb(patches)
         if self.encoder.use_pe:
-            tokens = tokens + self.encoder.pos_embedding[:, 1:(num_patches + 1)] #can be set to fixed in the encoder #no class token
+            tokens = tokens + self.encoder.pos_embedding[:, self.encoder.num_prefix_tokens:(num_patches + self.encoder.num_prefix_tokens)] #can be set to fixed in the encoder #no class token
         
         # calculate of patches needed to be masked, and get random indices, dividing it up for mask vs unmasked
         num_masked = int(self.masking_ratio * num_patches)
         num_unmasked = num_patches - num_masked
-        rand_indices = torch.rand(batch, num_patches, device = device).argsort(dim = -1)
+        rand_indices = torch.rand(batch, num_patches, device = device, requires_grad=False).argsort(dim = -1)
         masked_indices, unmasked_indices = rand_indices[:, :num_masked], rand_indices[:, num_masked:]
 
         # get the unmasked tokens to be encoded
@@ -132,7 +137,9 @@ class MAE(nn.Module):
 
         # reapply decoder position embedding to unmasked tokens
         if self.use_pos_emb_decoder:
-            decoder_tokens = decoder_tokens + self.decoder_pos_emb(unmasked_indices)
+            unmasked_decoder_tokens = decoder_tokens + self.decoder_pos_emb(unmasked_indices)
+        else:
+            unmasked_decoder_tokens = decoder_tokens
 
         # repeat mask tokens for number of masked, and add the positions using the masked indices derived above
         mask_tokens = repeat(self.mask_token, 'd -> b n d', b = batch, n = num_masked)
@@ -140,38 +147,31 @@ class MAE(nn.Module):
             mask_tokens = mask_tokens + self.decoder_pos_emb(masked_indices)
 
         # concat the masked tokens to the decoder tokens and attend with decoder
-        decoder_tokens = torch.cat((mask_tokens, decoder_tokens), dim = 1)
+        ###v0 - concatenate the mask with unmasked
+        #decoder_tokens = torch.cat((mask_tokens, unmasked_decoder_tokens), dim = 1)
+        ###v1 - reorder the sequence
+        decoder_tokens = torch.zeros(batch, num_patches, self.decoder_dim, device=device)
+        decoder_tokens[batch_range, unmasked_indices] = unmasked_decoder_tokens
+        decoder_tokens[batch_range, masked_indices] = mask_tokens
+        
         decoded_tokens = self.decoder(decoder_tokens)
 
         # splice out the mask tokens and project to pixel values
-        mask_tokens = decoded_tokens[:, :num_masked]
+        ##v0
+        #mask_tokens = decoded_tokens[:, :num_masked]
+        #pred_pixel_values = self.to_pixels(mask_tokens)
+        #unmask_tokens = decoded_tokens[:, num_masked:]
+        #pred_pixel_values_unmasked = self.to_pixels(unmask_tokens)
+        ##v1
+        mask_tokens = decoded_tokens[batch_range,masked_indices]
         pred_pixel_values = self.to_pixels(mask_tokens)
-        unmask_tokens = decoded_tokens[:, num_masked:]
+        unmask_tokens = decoded_tokens[batch_range,unmasked_indices]
         pred_pixel_values_unmasked = self.to_pixels(unmask_tokens)
 
-        #### ADDED #### Mask the patches with the cut
-        mask = torch.Tensor(self.mask)
-        mask = mask.to(device)
-
-        pred_pixel_values = rearrange(pred_pixel_values, 'b n (v c) -> b n c v', b =batch, n=num_masked, c =self.num_channels,v=self.num_vertices_per_channel)
-
-        for i in range(batch):
-            for j,k in enumerate(masked_indices[i]):
-                indices_to_extract = torch.Tensor(self.triangle_indices[str(k.cpu().numpy())].values).long()
-                indices_to_extract = indices_to_extract.to(device)
-                pred_pixel_values[i,j,:,:] = pred_pixel_values[i,j,:,:] * mask[indices_to_extract]
-        pred_pixel_values = rearrange(pred_pixel_values, 'b n c v -> b n (v c)')
-
-        pred_pixel_values_unmasked = rearrange(pred_pixel_values_unmasked, 'b n (v c) -> b n c v', b =batch, n=num_unmasked, c =self.num_channels,v=self.num_vertices_per_channel)
-
-        for i in range(batch):
-            for j,k in enumerate(unmasked_indices[i]):
-                indices_to_extract = torch.Tensor(self.triangle_indices[str(k.cpu().numpy())].values).long()
-                indices_to_extract = indices_to_extract.to(device)
-                pred_pixel_values_unmasked[i,j,:,:] = pred_pixel_values_unmasked[i,j,:,:] * mask[indices_to_extract]
-        pred_pixel_values_unmasked = rearrange(pred_pixel_values_unmasked, 'b n c v -> b n (v c)')
-
         # calculate reconstruction loss
+
+        prediction_pixels_mask = pred_pixel_values.detach()
+        prediction_pixels_unmasked  = pred_pixel_values_unmasked.detach()
 
         if self.loss == 'mse':
             if self.use_all_patch_loss:
@@ -189,5 +189,32 @@ class MAE(nn.Module):
             else:
                 recon_loss = F.smooth_l1_loss(pred_pixel_values, masked_patches, beta=0.05)
 
-        return recon_loss, pred_pixel_values,pred_pixel_values_unmasked, masked_indices, unmasked_indices
-        
+        #### ADDED #### Mask the patches with the cut
+        mask = torch.Tensor(self.mask)
+        mask = mask.to(device)
+
+        prediction_pixels_mask = rearrange(prediction_pixels_mask, 'b n (v c) -> b n c v', b =batch, n=num_masked, c =self.num_channels,v=self.num_vertices_per_channel)
+
+        prediction_pixels_mask_ = torch.zeros_like(prediction_pixels_mask)
+
+        prediction_pixels_unmasked = rearrange(prediction_pixels_unmasked, 'b n (v c) -> b n c v', b =batch, n=num_unmasked, c =self.num_channels,v=self.num_vertices_per_channel)
+
+        prediction_pixels_unmasked_ = torch.zeros_like(prediction_pixels_unmasked)
+
+        for i in range(batch):
+            for j,k in enumerate(masked_indices[i]):
+                indices_to_extract = torch.Tensor(self.triangle_indices[str(k.cpu().numpy())].values).long()
+                indices_to_extract = indices_to_extract.to(device)
+                prediction_pixels_mask_[i,j,:,:] = prediction_pixels_mask[i,j,:,:] * mask[indices_to_extract]
+        prediction_pixels_mask_ = rearrange(prediction_pixels_mask_, 'b n c v -> b n (v c)')
+
+
+        for i in range(batch):
+            for j,k in enumerate(unmasked_indices[i]):
+                indices_to_extract = torch.Tensor(self.triangle_indices[str(k.cpu().numpy())].values).long()
+                indices_to_extract = indices_to_extract.to(device)
+                prediction_pixels_unmasked_[i,j,:,:] = prediction_pixels_unmasked[i,j,:,:] * mask[indices_to_extract]
+        prediction_pixels_unmasked_ = rearrange(prediction_pixels_unmasked, 'b n c v -> b n (v c)')
+
+
+        return recon_loss, prediction_pixels_mask_, prediction_pixels_unmasked_, masked_indices, unmasked_indices

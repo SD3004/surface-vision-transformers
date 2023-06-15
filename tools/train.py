@@ -183,7 +183,8 @@ def train(config):
                         use_confounds=use_confounds,
                         weights_init=config['transformer']['init_weights'],
                         use_class_token=config['transformer']['use_class_token'],
-                        trainable_pos_emb=config['transformer']['trainable_pos_emb'])
+                        trainable_pos_emb=config['transformer']['trainable_pos_emb'],
+                        no_class_emb = config['transformer']['no_class_emb'],)
     
     elif config['MODEL'] == 'ms-sit':
         if config['transformer']['shifted_attention']:
@@ -236,9 +237,15 @@ def train(config):
         
     print('')
 
-
-    if config['training']['init_weights']=='ssl':
-        print('Loading weights from self-supervision training')
+    if config['training']['init_weights']=='ssl_mae':
+        print('Loading weights from self-supervision training MAE from: {}'.format(config['weights']['ssl_mae']))
+        model.load_state_dict(torch.load(config['weights']['ssl_mae'],map_location=device)['model_state_dict'],strict=True)
+    elif config['training']['init_weights']=='ssl_smae':
+        print('Loading weights from self-supervision training MAE from: {}'.format(config['weights']['ssl_smae']))
+        strict = False if task=='birth_age' else True
+        model.load_state_dict(torch.load(config['weights']['ssl_smae'],map_location=device)['model_state_dict'],strict=strict)
+    elif config['training']['init_weights']=='ssl_mpp':
+        print('Loading weights from self-supervision training MPP')
         #model.load_state_dict(torch.load(config['weights']['ssl_mpp'],map_location=device)['model_state_dict'],strict=False)
         model.load_state_dict(torch.load(config['weights']['ssl_mpp'],map_location=device),strict=False)
 
@@ -352,7 +359,7 @@ def train(config):
                 outputs = model(inputs)
             
             optimizer.zero_grad()
-
+            
             loss = criterion(outputs.squeeze(), targets)
 
             writer.add_scalar('loss/train_it', loss.item(), epoch*it_per_epoch + i +1)
@@ -697,7 +704,8 @@ def train(config):
                             use_confounds=use_confounds,
                             weights_init=config['transformer']['init_weights'],
                             use_class_token=config['transformer']['use_class_token'],
-                            trainable_pos_emb=config['transformer']['trainable_pos_emb'])
+                            trainable_pos_emb=config['transformer']['trainable_pos_emb'],
+                            no_class_emb = config['transformer']['no_class_emb'],)
         
         elif config['MODEL'] == 'ms-sit':
             if config['transformer']['shifted_attention']:
