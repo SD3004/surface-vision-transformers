@@ -245,9 +245,12 @@ def train(config):
         strict = False if task=='birth_age' else True
         model.load_state_dict(torch.load(config['weights']['ssl_smae'],map_location=device)['model_state_dict'],strict=strict)
     elif config['training']['init_weights']=='ssl_mpp':
-        print('Loading weights from self-supervision training MPP')
+        print('Loading weights from self-supervision training MPP from: {}'.format(config['weights']['ssl_mpp']))
+        #import pdb;pdb.set_trace()
         #model.load_state_dict(torch.load(config['weights']['ssl_mpp'],map_location=device)['model_state_dict'],strict=False)
-        model.load_state_dict(torch.load(config['weights']['ssl_mpp'],map_location=device),strict=False)
+        strict = False if task=='birth_age' else True
+        model.load_state_dict(torch.load(config['weights']['ssl_mpp'],map_location=device)['model_state_dict'],strict=strict)
+        #import pdb;pdb.set_trace()
 
     elif config['training']['init_weights']=='imagenet':
         print('Loading weights from imagenet pretraining')
@@ -260,11 +263,14 @@ def train(config):
         
     if config['training']['finetuning']==False:
             print('freezing all layers except mlp head')
-            for j, param in enumerate(model.parameters()):
-                if j<136:
+            #import pdb;pdb.set_trace()
+            for j, (name, param) in enumerate(model.named_parameters()):
+                if 'mlp_head' not in name:
                     param.requires_grad = False
                 else:
+                    print(name)
                     param.requires_grad = True
+    #import pdb;pdb.set_trace()
 
 
     model.to(device)

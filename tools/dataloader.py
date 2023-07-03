@@ -23,11 +23,17 @@ def loader_metrics(data_path,
     #####################    TRAINING DATA    #####################
     ###############################################################
 
+
+    if sampler and config['data']['dataset']=='dHCP' and config['data']['low_train']:
+        print('Loading partial train set: {}%'.format(config['data']['low_train']))
+        train_id = 'train_{}'.format(config['data']['low_train'])
+    else:
+        train_id = 'train'
+
     train_dataset = dataset_cortical_surfaces(config=config,
                                                 data_path=data_path,
-                                                split='train',
+                                                split=train_id,
                                                 split_cv=split_cv)
-
 
     #####################################
     ###############  dHCP  ##############
@@ -37,10 +43,15 @@ def loader_metrics(data_path,
         if config['data']['task']=='birth_age' :
             print('Sampler: dHCP preterm for birth_age')
 
+            if config['data']['low_train']:
+                train_id = 'train_{}'.format(config['data']['low_train'])
+            else:
+                train_id = 'train'
+
             train_labels = pd.read_csv('{}/labels/{}/cortical_metrics/{}/{}/{}.csv'.format(config['data']['path_to_workdir'],
                                                                                         config['data']['dataset'],
                                                                                         config['data']['task'],
-                                                                                        config['data']['hemi'],'train')).labels.to_numpy()
+                                                                                        config['data']['hemi'],train_id)).labels.to_numpy()
             sampler = sampler_preterm_birth_age(train_labels)
             train_loader = torch.utils.data.DataLoader(train_dataset,
                                                         batch_size = config['training']['bs'],
@@ -49,10 +60,15 @@ def loader_metrics(data_path,
         elif config['data']['task']=='scan_age':
             print('Sampler: dHCP preterm for scan_age')
 
+            if config['data']['low_train']:
+                train_id = 'train_{}'.format(config['data']['low_train'])
+            else:
+                train_id = 'train'
+
             train_labels = pd.read_csv('{}/labels/{}/cortical_metrics/{}/{}/{}.csv'.format(config['data']['path_to_workdir'],
                                                                                         config['data']['dataset'],
                                                                                         config['data']['task'],
-                                                                                        config['data']['hemi'],'train')).labels.to_numpy()
+                                                                                        config['data']['hemi'],train_id)).labels.to_numpy()
             sampler = sampler_preterm_scan_age(train_labels)
             train_loader = torch.utils.data.DataLoader(train_dataset,
                                                         batch_size = config['training']['bs'],

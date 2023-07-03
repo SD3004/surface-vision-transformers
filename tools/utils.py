@@ -317,6 +317,9 @@ def logging_sit(config, pretraining=False):
     else:
         folder_to_save_model = folder_to_save_model + '-freeze'
 
+    if config['data']['low_train'] and config['data']['dataset']=='dHCP':
+        folder_to_save_model = folder_to_save_model + '-{}%'.format(config['data']['low_train'])
+
     return folder_to_save_model
 
 def logging_ms_sit(config, pretraining=False):
