@@ -6,7 +6,7 @@
 MODEL: sit
 RECONSTRUCTION: False
 SSL: smae
-SERVER: False
+SERVER: True
 
 ##################################  DATA & TASK  ##################################
 
@@ -41,12 +41,13 @@ ico_5_grid:
     num_vertices: 5
 
 data:
-  path_to_data: /home/sd20/data/
-  path_to_template: /home/sd20/workspace/sMAE/data/templates
-  path_to_workdir: /home/sd20/workspace/sMAE
+
+  path_to_data: /nfs/home/sdahan/workspace/data
+  path_to_template: /nfs/home/sdahan/workspace/sMAE/data/templates
+  path_to_workdir: /nfs/home/sdahan/workspace/sMAE
   dataset: dHCP #dHCP, HCP, UKB
   dataloader: metrics #metrics, numpy
-  task: scan_age #scan_age, birth_age, scan_age_msmall,
+  task: birth_age #scan_age, birth_age, scan_age_msmall,
   configuration: template
   masking: True #for dHCP only; True to mask the cut. 
   hemi: half #half, full
@@ -81,13 +82,13 @@ transformer:
 
 training:
   LR: 0.0003
-  bs: 32
+  bs: 8
   bs_val: 1
   epochs: 250
   val_epoch: 10
   log_training_epoch: 5 #default 5, fMRI 1
   log_iteration: 20
-  gpu: 1
+  gpu: 0
   restart: False
   early_stopping: False
   init_weights: False #ssl, imagenet or False
