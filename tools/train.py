@@ -23,6 +23,8 @@ warnings.warn = warn
 sys.path.append('./')
 sys.path.append('../')
 sys.path.append('../../')
+sys.path.append('/nfs/home/sdahan/workspace/sMAE')
+
 
 import numpy as np
 import pandas as pd
@@ -239,18 +241,17 @@ def train(config):
 
     if config['training']['init_weights']=='ssl_mae':
         print('Loading weights from self-supervision training MAE from: {}'.format(config['weights']['ssl_mae']))
-        model.load_state_dict(torch.load(config['weights']['ssl_mae'],map_location=device)['model_state_dict'],strict=True)
+        model.load_state_dict(torch.load(config['weights']['ssl_mae'].format(config['data']['path_to_workdir']),map_location=device)['model_state_dict'],strict=True)
     elif config['training']['init_weights']=='ssl_smae':
         print('Loading weights from self-supervision training MAE from: {}'.format(config['weights']['ssl_smae']))
         strict = False if task=='birth_age' else True
-        model.load_state_dict(torch.load(config['weights']['ssl_smae'],map_location=device)['model_state_dict'],strict=strict)
+        print(config['weights']['ssl_smae'].format(config['data']['path_to_workdir']))
+        model.load_state_dict(torch.load(config['weights']['ssl_smae'].format(config['data']['path_to_workdir']),map_location=device)['model_state_dict'],strict=strict)
     elif config['training']['init_weights']=='ssl_mpp':
-        print('Loading weights from self-supervision training MPP from: {}'.format(config['weights']['ssl_mpp']))
-        #import pdb;pdb.set_trace()
-        #model.load_state_dict(torch.load(config['weights']['ssl_mpp'],map_location=device)['model_state_dict'],strict=False)
+        print('Loading weights from self-supervision training MPP')
         strict = False if task=='birth_age' else True
-        model.load_state_dict(torch.load(config['weights']['ssl_mpp'],map_location=device)['model_state_dict'],strict=strict)
-        #import pdb;pdb.set_trace()
+        #model.load_state_dict(torch.load(config['weights']['ssl_mpp'],map_location=device)['model_state_dict'],strict=False)
+        model.load_state_dict(torch.load(config['weights']['ssl_mpp'].format(config['data']['path_to_workdir']),map_location=device)['model_state_dict'],strict=strict)
 
     elif config['training']['init_weights']=='imagenet':
         print('Loading weights from imagenet pretraining')

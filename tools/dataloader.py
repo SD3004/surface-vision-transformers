@@ -23,7 +23,10 @@ def loader_metrics(data_path,
     #####################    TRAINING DATA    #####################
     ###############################################################
 
+<<<<<<< Updated upstream
 
+=======
+>>>>>>> Stashed changes
     if sampler and config['data']['dataset']=='dHCP' and config['data']['low_train']:
         print('Loading partial train set: {}%'.format(config['data']['low_train']))
         train_id = 'train_{}'.format(config['data']['low_train'])
