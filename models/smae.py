@@ -58,6 +58,7 @@ class sMAE(nn.Module):
         self.num_vertices_per_channel = pixel_values_per_patch // self.num_channels
         self.no_class_emb_decoder = no_class_emb_decoder
         self.masking = mask
+        self.use_confonds = self.encoder.use_confounds
         
 
         # decoder parameters
@@ -130,7 +131,7 @@ class sMAE(nn.Module):
 
         return x_masked, mask, ids_restore, ids_keep, ids_not_keep
 
-    def forward_encoder(self, img):
+    def forward_encoder(self, img, confounds=None):
         device = img.device
 
         # get patches
@@ -153,6 +154,12 @@ class sMAE(nn.Module):
             cls_token = self.encoder.cls_token if self.encoder.no_class_emb else self.encoder.cls_token + self.encoder.pos_embedding[:, :self.encoder.num_prefix_tokens, :] 
             cls_tokens = cls_token.expand(x.shape[0], -1, -1)
             x = torch.cat((cls_tokens, x), dim=1)
+
+        if self.use_confounds and (confounds is not None):
+            confounds = self.encoder.proj_confound(confounds.view(-1,1))
+            confounds = repeat(confounds, 'b d -> b n d', n=num_patches+1) if (not self.encoder.no_class_emb) else repeat(confounds, 'b d -> b n d', n=num_patches)
+            x += confounds
+            import pdb;pdb.set_trace()
             
         # attend with vision transformer
         x = self.encoder.transformer(x)
@@ -206,8 +213,8 @@ class sMAE(nn.Module):
         return loss
 
     
-    def forward(self, imgs):
-        latent, mask, ids_restore, ids_keep, ids_not_keep = self.forward_encoder(imgs,)
+    def forward(self, imgs, confounds=None):
+        latent, mask, ids_restore, ids_keep, ids_not_keep = self.forward_encoder(imgs,confounds)
         pred = self.forward_decoder(latent, ids_restore)  # [N, L, p*p*3] # [N,L,v*C]
         loss = self.forward_loss(imgs, pred, mask)
 

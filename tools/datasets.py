@@ -16,6 +16,7 @@ from scipy.spatial.transform import Rotation as R
 
 from surfaces.metric_resample import *
 from surfaces.metric_resample_labels import *
+from skimage.exposure import match_histograms
 
     
 class dataset_cortical_surfaces(Dataset):
@@ -54,6 +55,13 @@ class dataset_cortical_surfaces(Dataset):
         self.warps_ico = config['augmentation']['warp_ico']
         self.nbr_vertices = config['ico_{}_grid'.format(sub_ico)]['num_vertices']
         self.nbr_patches = config['ico_{}_grid'.format(sub_ico)]['num_patches']
+        self.data_harmonisation= config['data']['data_harmonisation']
+
+        if self.data_harmonisation:
+            self.mean_channel_1_ukb = np.load('/home/sd20/workspace/sMAE/labels/UKB/cortical_metrics/scan_age/half/mean_0.npy')
+            self.mean_channel_2_ukb = np.load('/home/sd20/workspace/sMAE/labels/UKB/cortical_metrics/scan_age/half/mean_1.npy')
+            self.mean_channel_3_ukb = np.load('/home/sd20/workspace/sMAE/labels/UKB/cortical_metrics/scan_age/half/mean_2.npy')
+            self.mean_channel_4_ukb = np.load('/home/sd20/workspace/sMAE/labels/UKB/cortical_metrics/scan_age/half/mean_3.npy')
         
         if config['MODEL'] == 'sit' or config['MODEL']=='ms-sit':
             self.patching=True
@@ -227,6 +235,15 @@ class dataset_cortical_surfaces(Dataset):
 
         path = os.path.join(self.filedir,self.filenames.iloc[idx])
         data =  np.array(nb.load(path).agg_data())
+
+        if self.data_harmonisation:
+            data[0] = match_histograms(data[0], self.mean_channel_1_ukb, channel_axis=None)
+            data[1] = match_histograms(data[1], self.mean_channel_2_ukb, channel_axis=None)
+            data[2] = match_histograms(data[2], self.mean_channel_3_ukb, channel_axis=None)
+            data[3] = match_histograms(data[3], self.mean_channel_4_ukb, channel_axis=None)
+            data = np.array(data)
+
+
         if len(data.shape)==1:
             data = np.expand_dims(data,0)
         data = data[self.channels,:]
@@ -251,11 +268,16 @@ class dataset_cortical_surfaces(Dataset):
     def clipping_(self,data):
 
         if self.dataset == 'dHCP':
-            lower_bounds = np.array([0.0,-0.5, -0.05, -10.0])
-            upper_bounds = np.array([2.2, 0.6,2.6, 10.0 ])
-            for i,channel in enumerate(self.channels):
-                data[i,:] = np.clip(data[i,:], lower_bounds[channel], upper_bounds[channel]
-                )
+            if self.data_harmonisation:
+                lower_bounds = np.array([0.0,-0.41, -0.40, -16.50])
+                upper_bounds = np.array([2.41, 0.45,5.33, 15.4])
+                for i,channel in enumerate(self.channels):
+                    data[i,:] = np.clip(data[i,:], lower_bounds[channel], upper_bounds[channel])
+            else:
+                lower_bounds = np.array([0.0,-0.5, -0.05, -10.0])
+                upper_bounds = np.array([2.2, 0.6,2.6, 10.0 ])
+                for i,channel in enumerate(self.channels):
+                    data[i,:] = np.clip(data[i,:], lower_bounds[channel], upper_bounds[channel])
         elif self.dataset == 'UKB':
             lower_bounds = np.array([0.0,-0.41, -0.40, -16.50])
             upper_bounds = np.array([2.41, 0.45,5.33, 15.4])
