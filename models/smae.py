@@ -27,12 +27,12 @@ class sMAE(nn.Module):
         decoder_depth = 1,
         decoder_heads = 8,
         decoder_dim_head = 64,
-        loss = 'mse',
         dataset = 'dHCP',
         configuration = 'template',
         num_channels =1, 
         weights_init = False,
-        no_class_emb_decoder = False, 
+        use_class_token_dec = False,
+        no_pos_emb_class_token_decoder = False, 
         mask = True,  
         path_to_template = '',
         path_to_workdir = '',
@@ -50,22 +50,25 @@ class sMAE(nn.Module):
         self.to_patch, self.patch_to_emb = encoder.to_patch_embedding[:2]
         pixel_values_per_patch = self.patch_to_emb.weight.shape[-1] # channels*num_vertices
         self.norm = encoder.mlp_head[0]
-
-        self.loss = loss
         self.dataset = dataset
         self.num_channels = num_channels
         self.configuration = configuration
         self.num_vertices_per_channel = pixel_values_per_patch // self.num_channels
-        self.no_class_emb_decoder = no_class_emb_decoder
+        self.use_class_token_dec = use_class_token_dec
+        self.no_pos_emb_class_token_decoder = no_pos_emb_class_token_decoder
         self.masking = mask
-        self.use_confonds = self.encoder.use_confounds
+        self.use_confounds = self.encoder.use_confounds
         
 
         # decoder parameters
         self.enc_to_dec = nn.Linear(encoder_dim, decoder_dim,bias=True) if encoder_dim != decoder_dim else nn.Identity()
-        self.decoder = Transformer(dim = decoder_dim, depth = decoder_depth, heads = decoder_heads, dim_head = decoder_dim_head, mlp_dim = decoder_dim * 4)
+        self.decoder = Transformer(dim = decoder_dim,
+                                    depth = decoder_depth, 
+                                    heads = decoder_heads, 
+                                    dim_head = decoder_dim_head, 
+                                    mlp_dim = decoder_dim * 4)
 
-        self.decoder_pos_emb = nn.Parameter(torch.zeros(1, self.num_patches, decoder_dim) * .02, requires_grad=False) if no_class_emb_decoder \
+        self.decoder_pos_emb = nn.Parameter(torch.zeros(1, self.num_patches, decoder_dim) * .02, requires_grad=False) if no_pos_emb_class_token_decoder \
                 else nn.Parameter(torch.zeros(1, self.num_patches+1, decoder_dim), requires_grad=False)
         self._init_pos_em()
 
@@ -88,6 +91,7 @@ class sMAE(nn.Module):
 
         self.triangle_indices = pd.read_csv('{}/patch_extraction/{}/triangle_indices_ico_6_sub_ico_{}.csv'.format(path_to_workdir,sampling,sub_ico))
 
+        self.cls_token_dec = nn.Parameter(torch.randn(1, 1, decoder_dim)) if use_class_token_dec else None
 
     def init_weights(self,):
         nn.init.normal_(self.mask_token, std=.02)
@@ -99,7 +103,7 @@ class sMAE(nn.Module):
             trunc_normal_(m.weight, std=.02)
     
     def _init_pos_em(self,):
-        num_patches =  self.num_patches if self.no_class_emb_decoder else self.num_patches +1
+        num_patches =  self.num_patches if self.no_pos_emb_class_token_decoder else self.num_patches +1
         dec_pos_embed = get_1d_sincos_pos_embed_from_grid(self.decoder_pos_emb.shape[-1], np.arange(num_patches, dtype=np.float32))
         self.decoder_pos_emb.data.copy_(torch.from_numpy(dec_pos_embed).float().unsqueeze(0))
             
@@ -148,7 +152,6 @@ class sMAE(nn.Module):
         
         # masking: length -> length * mask_ratio
         x, mask, ids_restore, ids_keep, ids_not_keep = self.random_masking(x, self.masking_ratio)
-        
         # append cls token
         if self.encoder.use_class_token:
             cls_token = self.encoder.cls_token if self.encoder.no_class_emb else self.encoder.cls_token + self.encoder.pos_embedding[:, :self.encoder.num_prefix_tokens, :] 
@@ -159,8 +162,7 @@ class sMAE(nn.Module):
             confounds = self.encoder.proj_confound(confounds.view(-1,1))
             confounds = repeat(confounds, 'b d -> b n d', n=num_patches+1) if (not self.encoder.no_class_emb) else repeat(confounds, 'b d -> b n d', n=num_patches)
             x += confounds
-            import pdb;pdb.set_trace()
-            
+        
         # attend with vision transformer
         x = self.encoder.transformer(x)
         
@@ -171,20 +173,37 @@ class sMAE(nn.Module):
     def forward_decoder(self, x, ids_restore):
         # embed tokens
         x = self.enc_to_dec(x)
-        
         # append mask tokens to sequence
-        mask_tokens = self.mask_token.repeat(x.shape[0], ids_restore.shape[1] + 1 - x.shape[1], 1)
-        x_ = torch.cat([x[:, 1:, :], mask_tokens], dim=1)  # no cls token
-        x_ = torch.gather(x_, dim=1, index=ids_restore.unsqueeze(-1).repeat(1, 1, x.shape[2]))  # unshuffle
+        mask_tokens = self.mask_token.repeat(x.shape[0], ids_restore.shape[1] - x.shape[1], 1) ### !!!!maybe complete random
+        if self.encoder.use_class_token:
+            x_ = torch.cat([x[:, 1:, :], mask_tokens], dim=1)  # remove temp cls token
+            x_ = torch.gather(x_, dim=1, index=ids_restore.unsqueeze(-1).repeat(1, 1, x.shape[2]))  # unshuffle
+        else:
+            #import pdb;pdb.set_trace()
+            x_ = torch.cat([x, mask_tokens], dim=1) 
+            #import pdb;pdb.set_trace()
+            x_ = torch.gather(x_, dim=1, index=ids_restore.unsqueeze(-1).repeat(1, 1, x.shape[2]))  # unshuffle
         
         # add pos embed
+        '''
         if self.no_class_emb_decoder:
             x_ = x_ + self.decoder_pos_emb
             x = torch.cat([x[:, :1, :], x_], dim=1)  # append cls token
         else:
             x = torch.cat([x[:, :1, :], x_], dim=1)  # append cls token
             x = x + self.decoder_pos_emb    
-        
+        '''
+        if self.use_class_token_dec and self.encoder.use_class_token:
+            if self.no_pos_emb_class_token_decoder:
+                ### TO REVIEW
+                x_ = x_ + self.decoder_pos_emb
+                x = torch.cat([x[:, :1, :], x_], dim=1)  # append cls token
+            else:
+                x = torch.cat([x[:, :1, :], x_], dim=1)  # append cls token
+                x = x + self.decoder_pos_emb    
+        else:
+            x = x_ + self.decoder_pos_emb    
+                
         x = self.decoder(x)
         x = self.decoder_norm(x)
         
@@ -192,7 +211,8 @@ class sMAE(nn.Module):
         x = self.to_pixels(x)
         
         # remove cls token
-        x = x[:, 1:, :]
+        if self.use_class_token_dec:
+            x = x[:, 1:, :]
 
         return x
     

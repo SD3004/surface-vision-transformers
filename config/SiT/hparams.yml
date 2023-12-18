@@ -74,7 +74,7 @@ transformer:
   use_pos_embedding: 'sin-cos' #'trainable', 'sin-cos', False
   use_class_token: True #False
   trainable_pos_emb: False #False #only for use_pos_embedding=trainable
-  no_class_emb: False #to use pos emb in the class token -> False, else True
+  no_class_emb: True #to use pos emb in the class token -> False, else True
   init_weights: False #True
 
 ##################################  TRAINING  ###################################
@@ -126,7 +126,7 @@ weights:
   #imagenet: 'vit_base_patch16_224' #ViT(dim=768, depth=12, heads=12,mlp_dim=3072,dim_head=64)
 
 augmentation: # prob of augmentation techniques need to sum to 1
-  prob_augmentation: 0.0  #probability of using any of the augmentation technique; 0.0 to not use any augmentation
+  prob_augmentation: 0.5  #probability of using any of the augmentation technique; 0.0 to not use any augmentation
   prob_rotation: 0.5 #use rotation
   max_abs_deg_rotation: 15
   prob_warping: 0.5 #use non-linear warping
