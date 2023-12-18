@@ -41,7 +41,7 @@ def get_data_path(config):
 
     if str(dataloader) == 'metrics':
         if dataset == 'dHCP':
-            data_path = os.path.join(config['data']['path_to_data'],dataset,'metrics/ico_6_{}'.format(sampling),'base','regression_{}_space_features'.format(configuration))
+            data_path = os.path.join(config['data']['path_to_data'],dataset,config['data']['folder_to_dhcp'].format(configuration))
         elif dataset == 'UKB':
             if modality == 'cortical_metrics':
                 if task == 'scan_age_msmall' or task == 'sex_msmall':

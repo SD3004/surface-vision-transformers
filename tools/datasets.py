@@ -16,7 +16,7 @@ from scipy.spatial.transform import Rotation as R
 
 from surfaces.metric_resample import *
 from surfaces.metric_resample_labels import *
-from skimage.exposure import match_histograms
+#from skimage.exposure import match_histograms
 
     
 class dataset_cortical_surfaces(Dataset):
@@ -58,10 +58,10 @@ class dataset_cortical_surfaces(Dataset):
         self.data_harmonisation= config['data']['data_harmonisation']
 
         if self.data_harmonisation:
-            self.mean_channel_1_ukb = np.load('/home/sd20/workspace/sMAE/labels/UKB/cortical_metrics/scan_age/half/mean_0.npy')
-            self.mean_channel_2_ukb = np.load('/home/sd20/workspace/sMAE/labels/UKB/cortical_metrics/scan_age/half/mean_1.npy')
-            self.mean_channel_3_ukb = np.load('/home/sd20/workspace/sMAE/labels/UKB/cortical_metrics/scan_age/half/mean_2.npy')
-            self.mean_channel_4_ukb = np.load('/home/sd20/workspace/sMAE/labels/UKB/cortical_metrics/scan_age/half/mean_3.npy')
+            self.mean_channel_1_ukb = np.load('{}/labels/UKB/cortical_metrics/scan_age/half/mean_0.npy'.format(config['data']['path_to_workdir']))
+            self.mean_channel_2_ukb = np.load('{}/labels/UKB/cortical_metrics/scan_age/half/mean_1.npy'.format(config['data']['path_to_workdir']))
+            self.mean_channel_3_ukb = np.load('{}/labels/UKB/cortical_metrics/scan_age/half/mean_2.npy'.format(config['data']['path_to_workdir']))
+            self.mean_channel_4_ukb = np.load('{}/labels/UKB/cortical_metrics/scan_age/half/mean_3.npy'.format(config['data']['path_to_workdir']))
         
         if config['MODEL'] == 'sit' or config['MODEL']=='ms-sit':
             self.patching=True

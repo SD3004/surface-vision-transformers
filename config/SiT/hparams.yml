@@ -8,7 +8,7 @@ RECONSTRUCTION: False
 
 mesh_resolution:
   ico_mesh: 6 #resolution of the input mesh
-  ico_grid: 2 #resolution of the grid used to extract patches
+  ico_grid: 3 #resolution of the grid used to extract patches
   sampling: msm #sampling used for mesh resampling and patch extraction #msm or wb
   reorder: False #reorder the sequence of patches
 
@@ -37,12 +37,12 @@ ico_5_grid:
     num_vertices: 5
 
 data:
-  path_to_data: /home/sd20/data/
-  path_to_template: /home/sd20/data/template_spheres
-  path_to_workdir: /home/sd20/workspace/sMAE
+  path_to_data: /nfs/home/sdahan/workspace/data
+  path_to_template: /nfs/home/sdahan/workspace/sMAE/data/templates
+  path_to_workdir: /nfs/home/sdahan/workspace/sMAE
   dataset: dHCP  #dHCP, HCP, UKB
   dataloader: metrics #metrics, numpy
-  task: birth_age  #scan_age, birth_age, sex, handedness, income_level, fluid_intelligence, sex_msmall, scan_age_msmall,iq
+  task: scan_age  #scan_age, birth_age, sex, handedness, income_level, fluid_intelligence, sex_msmall, scan_age_msmall,iq
   configuration: template #native, template
   masking: True # True to mask the cut. 
   hemi: half #half, full
@@ -50,6 +50,9 @@ data:
   normalise: sub-standardise #standardise, standardise-vertex-wise,standardise-channel-wise,False, normalise, group-standardise,sub-standardise
   modality: cortical_metrics #cortical_metrics, fMRI, memory_task
   clipping: True #True, False
+  folder_to_dhcp: regression_{}_space_features
+  low_train: 20
+  data_harmonisation: False
 
 logging:
   folder_to_save_model: "{}/logs/{}/{}/{}/SiT/ico_grid_{}/{}" #{dataset},{modality},{task},{grid resolution},{configuration}
@@ -64,7 +67,7 @@ transformer:
   pool: 'cls'  # 'cls' or 'mean'
   num_classes: 1
   #num_channels: 4 #cortical_metrics UKB/dHCP = 4; fMRI UKB = 490
-  channels: [0,1]
+  channels: [0,1,2,3]
   dim_head: 64 #64,32,16
   dropout: 0.0
   emb_dropout: 0.0
@@ -77,23 +80,23 @@ transformer:
 ##################################  TRAINING  ###################################
   
 training:
-  LR: 0.0001
-  bs: 32
+  LR: 0.00001
+  bs: 8
   bs_val: 1
-  epochs: 250
-  val_epoch: 5
-  log_training_epoch: 5 #default 5, fMRI 1
-  gpu: 1
+  epochs: 500
+  val_epoch: 1
+  log_training_epoch: 1 #default 5, fMRI 1
+  gpu: 0
   loss: mse #mse, l1
   testing: True
   testing_debug: False
-  init_weights: False #ssl_mae, ssl_smae, ssl_mpp, imagenet or False
+  init_weights: ssl_smae #ssl_mae, ssl_smae, ssl_mpp, imagenet or False
   finetuning: True
   save_ckpt: True
-  use_confounds: True
+  use_confounds: False
   use_cross_validation: False #True
   sampler: True 
-  early_stopping: 300
+  early_stopping: 1000
   cv_split: [1,2,3,4,5]
   
 weights: 
@@ -108,12 +111,16 @@ weights:
   #ssl_mpp: ../logs/dHCP/cortical_metrics/pretraining/scan_age/mae/SiT/ico_grid_3/template/no_augmentation/2022-12-09-18:28:23-tiny-finetune/encoder-best.pt
   #ssl_mpp: ../logs/UKB/cortical_metrics/pretraining/scan_age/mae/SiT/ico_grid_2/template/no_augmentation/2022-10-29-17:22:01-tiny-finetune/encoder-best.pt #50% UKB  ICO2
   #ssl_mpp:  ../logs/UKB/cortical_metrics/pretraining/scan_age/mae/SiT/ico_grid_3/template/no_augmentation/2022-11-06-22:38:21-tiny-finetune/encoder-best.pt #50% UKB ICO3
-  ssl_mpp: ../logs/HCP/memory_task/pretraining/iq/mae/SiT/ico_grid_3/template/no_augmentation/2022-12-11-11:02:02-tiny-finetune/encoder-best.pt
+  #ssl_mpp: ../logs/HCP/memory_task/pretraining/iq/mae/SiT/ico_grid_3/template/no_augmentation/2022-12-11-11:02:02-tiny-finetune/encoder-best.pt
+  ssl_mpp: '{}/logs/dHCP/cortical_metrics/pretraining/scan_age/mpp/SiT/ico_grid_2/template/no_augmentation/2023-06-19-18:14:28-tiny-finetune/encoder-best.pt'
+  #ssl_mpp: '{}/logs/dHCP/cortical_metrics/pretraining/scan_age/mpp/SiT/ico_grid_3/template/no_augmentation/2023-06-19-18:03:35-tiny-finetune/encoder-best.pt'
   #ssl_mpp: ../logs/HCP/memory_task/pretraining/iq/mae/SiT/ico_grid_2/template/no_augmentation/2022-10-22-23:57:33-tiny-finetune/encoder-best.pt
   #ssl_mae: ../logs/dHCP/cortical_metrics/pretraining/scan_age/mae/SiT/ico_grid_2/template/no_augmentation/2023-06-05-13:56:19-tiny-finetune/encoder-best.pt
   #ssl_mae: ../logs/dHCP/cortical_metrics/pretraining/scan_age/mae/SiT/ico_grid_2/template/no_augmentation/2023-06-05-15:59:27-tiny-finetune/encoder-best.pt
-  ssl_mae: ../logs/dHCP/cortical_metrics/pretraining/scan_age/mae/SiT/ico_grid_2/template/no_augmentation/2023-06-14-10:14:29-tiny-finetune/encoder-best.pt
-  ssl_smae: ../logs/dHCP/cortical_metrics/pretraining/scan_age/smae/SiT/ico_grid_2/template/no_augmentation/2023-06-14-21:02:08-tiny-finetune/encoder-best.pt
+  #ssl_mae: '{}/logs/dHCP/cortical_metrics/pretraining/scan_age/mae/SiT/ico_grid_2/template/no_augmentation/2023-06-14-10:14:29-tiny-finetune/encoder-best.pt'
+  #ssl_smae: '{}/logs/dHCP/cortical_metrics/pretraining/scan_age/smae/SiT/ico_grid_2/template/no_augmentation/2023-06-15-14:23:48-tiny-finetune/encoder-best.pt'
+  #ssl_smae: '{}/logs/dHCP/cortical_metrics/pretraining/scan_age/smae/SiT/ico_grid_3/template/no_augmentation/2023-06-16-00:33:46-tiny-finetune/encoder-best.pt'
+  ssl_smae: '{}/logs/UKB/cortical_metrics/pretraining/scan_age/smae/SiT/ico_grid_3/template/no_augmentation/2023-06-24-20:16:16-tiny-finetune/encoder-best.pt'
   imagenet: 'vit_tiny_patch16_224' #ViT(dim=192, depth=12, heads=3,mlp_dim=768,dim_head=64)
   #imagenet: 'vit_small_patch16_224' #ViT(dim=384, depth=12, heads=6,mlp_dim=1536,dim_head=64)
   #imagenet: 'vit_base_patch16_224' #ViT(dim=768, depth=12, heads=12,mlp_dim=3072,dim_head=64)
