@@ -6,7 +6,7 @@
 MODEL: sit
 RECONSTRUCTION: False
 SSL: smae
-SERVER: False
+SERVER: True
 
 ##################################  DATA & TASK  ##################################
 
@@ -41,15 +41,9 @@ ico_5_grid:
     num_vertices: 5
 
 data:
-<<<<<<< HEAD
   path_to_data: /nfs/home/sdahan/workspace/data
   path_to_template: /nfs/home/sdahan/workspace/sMAE/data/templates
   path_to_workdir: /nfs/home/sdahan/workspace/sMAE
-=======
-  path_to_data: /home/sd20/data
-  path_to_template: /home/sd20/data/template_spheres
-  path_to_workdir: /home/sd20/workspace/sMAE
->>>>>>> sMAE
   dataset: dHCP #dHCP, HCP, UKB
   dataloader: metrics #metrics, numpy
   task: scan_age #scan_age, birth_age, scan_age_msmall,
@@ -59,13 +53,9 @@ data:
   normalise: False #standardise-vertex-wise,standardise-channel-wise,False, sub-normalise, group-standardise,sub-standardise
   modality: cortical_metrics #cortical_metrics, fMRI, memory_task
   clipping: True # False
-<<<<<<< HEAD
   folder_to_dhcp: regression_{}_space_features
-=======
-  folder_to_dhcp: metrics/ico_6_msm/base/regression_{}_space_features
   low_train: 0 #set the number of trianing samples;0 means off
   data_harmonisation: False
->>>>>>> sMAE
 
 logging:
   folder_to_save_model: "{}/logs/{}/{}/{}/{}/{}/SiT/ico_grid_{}/{}" #{dataset},{modality},{task},{grid resolution},{configuration}
@@ -128,11 +118,7 @@ pretraining_mae:
 
 pretraining_smae:
   mask_prob: 0.75
-<<<<<<< HEAD
   decoder_dim: 192 
-=======
-  decoder_dim: 192
->>>>>>> sMAE
   decoder_depth: 3 
   decoder_heads: 3
   decoder_dim_head: 64
