@@ -25,7 +25,6 @@ warnings.warn = warn
 
 
 sys.path.append('../')
-sys.path.append('../../')
 sys.path.append('./')
 sys.path.append('../models/')
 sys.path.append('./workspace/sMAE/')
@@ -248,12 +247,12 @@ def train(config):
                     decoder_depth=config['pretraining_smae']['decoder_depth'],
                     decoder_heads = config['pretraining_smae']['decoder_heads'],
                     decoder_dim_head = config['pretraining_smae']['decoder_dim_head'],
-                    loss=config['pretraining_smae']['loss'],
                     dataset=dataset,
                     configuration = configuration,
                     num_channels=num_channels,
                     weights_init=config['pretraining_smae']['init_weights'],
-                    no_class_emb_decoder=config['pretraining_smae']['no_class_emb_decoder'],
+                    use_class_token_dec=config['pretraining_smae']['use_class_token_dec'],
+                    no_pos_emb_class_token_decoder=config['pretraining_smae']['no_pos_emb_class_token_decoder'],
                     mask=config['data']['masking'],
                     path_to_template=config['data']['path_to_template'],
                     path_to_workdir= config['data']['path_to_workdir'],
@@ -320,15 +319,25 @@ def train(config):
         running_loss = 0
 
         for i, data in enumerate(train_loader):
-
-            inputs, _ = data[0].to(device), data[1].to(device)
-
             optimizer.zero_grad()
 
-            if config['SSL'] == 'mae' or config['SSL'] == 'smae':
-                mpp_loss, reconstructed_batch, reconstructed_batch_unmasked, masked_indices, unmasked_indices= ssl(inputs)
-            elif config['SSL'] == 'mpp':
-                mpp_loss, _ = ssl(inputs)
+            inputs, labels = data[0].to(device), data[1].to(device)
+
+            if use_confounds:
+
+                confounds = labels[:,1]
+                if config['SSL'] == 'mae' or config['SSL'] == 'smae':
+                    mpp_loss, reconstructed_batch, reconstructed_batch_unmasked, masked_indices, unmasked_indices= ssl(inputs,confounds)
+                
+                #import pdb;pdb.set_trace()
+
+
+            else:
+
+                if config['SSL'] == 'mae' or config['SSL'] == 'smae':
+                    mpp_loss, reconstructed_batch, reconstructed_batch_unmasked, masked_indices, unmasked_indices= ssl(inputs)
+                elif config['SSL'] == 'mpp':
+                    mpp_loss, _ = ssl(inputs)
                 
             mpp_loss.backward()
             optimizer.step()

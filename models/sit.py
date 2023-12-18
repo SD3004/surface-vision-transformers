@@ -22,7 +22,7 @@ import numpy as np
 from einops import rearrange, repeat
 from einops.layers.torch import Rearrange
 
-from vit_pytorch.vit import Transformer, Attention, FeedForward, PreNorm
+from vit_pytorch.vit import Transformer
 
 from timm.models.layers import trunc_normal_
 
@@ -154,6 +154,8 @@ class SiT(nn.Module):
                 cls_tokens = repeat(self.cls_token, '1 1 d -> b 1 d', b = b)
                 x = torch.cat((cls_tokens, x), dim=1)
             x = x + self.pos_embedding
+        print('HELLLOOOOOOOOOOOO')
+        import pdb;pdb.set_trace()
         return x 
         
 
