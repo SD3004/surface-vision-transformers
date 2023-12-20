@@ -679,19 +679,20 @@ def save_reconstruction_mae(reconstructed_batch,
         
 
 def save_reconstruction_mae_fmri(reconstructed_batch,
-                            reconstructed_batch_unmasked,
-                            inputs, 
-                            num_patches,
-                            ico_grid,
-                            num_frames,
-                            masked_indices,
-                            unmasked_indices,
-                            epoch,
-                            folder_to_save_model,
-                            split,
-                            id,
-                            server,
-                            ):
+                                reconstructed_batch_unmasked,
+                                inputs, 
+                                num_patches,
+                                ico_grid,
+                                num_frames,
+                                masked_indices,
+                                unmasked_indices,
+                                epoch,
+                                folder_to_save_model,
+                                split,
+                                path_to_workdir,
+                                id,
+                                server,
+                                ):
 
     try:
         os.makedirs(os.path.join(folder_to_save_model, 'reconstruction', '{}'.format(split)),exist_ok=False)
@@ -699,7 +700,7 @@ def save_reconstruction_mae_fmri(reconstructed_batch,
     except OSError:
         pass
 
-    indices = pd.read_csv('../patch_extraction/msm/triangle_indices_ico_6_sub_ico_{}.csv'.format(ico_grid))
+    indices = pd.read_csv('{}/patch_extraction/msm/triangle_indices_ico_6_sub_ico_{}.csv'.format(path_to_workdir,ico_grid))
 
     original_sphere = np.zeros((40962,num_frames),dtype=np.float32)
 
@@ -796,6 +797,7 @@ def save_reconstruction_mae_test(reconstructed_batch,
                                 folder_to_save_model,
                                 id,
                                 split,
+                                path_to_workdir,
                                 hemi,
                                 server,
                                 ):
@@ -806,7 +808,7 @@ def save_reconstruction_mae_test(reconstructed_batch,
     except OSError:
         pass
 
-    indices = pd.read_csv('../patch_extraction/msm/triangle_indices_ico_6_sub_ico_{}.csv'.format(ico_grid))
+    indices = pd.read_csv('{}/patch_extraction/msm/triangle_indices_ico_6_sub_ico_{}.csv'.format(path_to_workdir,ico_grid))
 
     original_sphere = np.zeros((40962,num_channels),dtype=np.float32)
 

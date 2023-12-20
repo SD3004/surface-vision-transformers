@@ -29,7 +29,7 @@ sys.path.append('../')
 sys.path.append('../../')
 sys.path.append('./')
 sys.path.append('../models/')
-sys.path.append('./workspace/fMRI_transformers/')
+sys.path.append('/nfs/home/sdahan/workspace/sMAE/')
 from tools.utils import logging_sit, get_data_path, get_dataloaders, get_dimensions, get_scheduler
 
 from datetime import datetime

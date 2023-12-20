@@ -6,7 +6,7 @@
 MODEL: sit
 RECONSTRUCTION: False
 SSL: vsmae #mae, smae, vsmae
-SERVER: False
+SERVER: True
 
 ##################################  DATA & TASK  ##################################
 
@@ -41,8 +41,8 @@ ico_5_grid:
     num_vertices: 5
 
 data:
-  path_to_data: /nfs/home/sdahan/workspace/data/HCP/rest_frames # /home/sd20/data/HCP/rest/ #/drive/data/HCP/movie_task/fmri_7T_1.6 , , /drive/data/HCP/rest
-  path_to_template: nfs/home/sdahan/workspace/sMAE/data/templates
+  path_to_data: /nfs/home/sdahan/workspace/data # /home/sd20/data/HCP/rest/ #/drive/data/HCP/movie_task/fmri_7T_1.6 , , /drive/data/HCP/rest
+  path_to_template: /nfs/home/sdahan/workspace/sMAE/data/templates
   path_to_workdir: /nfs/home/sdahan/workspace/sMAE
   dataset: HCP #dHCP, HCP, UKB
   registration: msmall #msmsulc, msmall
@@ -54,7 +54,7 @@ data:
   hemi_part: all
   demean: False #False for smooth_fMRI
   normalise: None #standardise-vertex-wise,standardise-channel-wise,False, sub-normalise, group-standardise, sub-standardise, None
-  modality: rfMRI #cortical_metrics, fMRI, memory_task, rfMRI, tfMRI, smooth_rfMRI
+  modality: tfMRI #cortical_metrics, fMRI, memory_task, rfMRI, tfMRI, smooth_rfMRI
   clipping: False #True, False
   balance: False
   subset: True
@@ -91,7 +91,7 @@ training:
   iterations: 50
   log_training_it: 10 #default 5, fMRI 1
   log_val_it: 20
-  gpu: 1
+  gpu: 0
   restart: False
   early_stopping: False
   init_weights: False #ssl, imagenet or False
