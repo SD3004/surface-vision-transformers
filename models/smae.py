@@ -145,7 +145,7 @@ class sMAE(nn.Module):
         # patch to encoder tokens and add positions
         x = self.patch_to_emb(patches)
         
-        if self.encoder.no_class_emb:
+        if self.encoder.no_class_token_emb:
             x = x + self.encoder.pos_embedding[:,:num_patches,:]  #can be set to fixed in the encoder 
         else:
             x = x + self.encoder.pos_embedding[:,self.encoder.num_prefix_tokens:(num_patches+self.encoder.num_prefix_tokens),:] #use use class toekn: 1-> n+1 else, 0->n
@@ -154,13 +154,13 @@ class sMAE(nn.Module):
         x, mask, ids_restore, ids_keep, ids_not_keep = self.random_masking(x, self.masking_ratio)
         # append cls token
         if self.encoder.use_class_token:
-            cls_token = self.encoder.cls_token if self.encoder.no_class_emb else self.encoder.cls_token + self.encoder.pos_embedding[:, :self.encoder.num_prefix_tokens, :] 
+            cls_token = self.encoder.cls_token if self.encoder.no_class_token_emb else self.encoder.cls_token + self.encoder.pos_embedding[:, :self.encoder.num_prefix_tokens, :] 
             cls_tokens = cls_token.expand(x.shape[0], -1, -1)
             x = torch.cat((cls_tokens, x), dim=1)
 
         if self.use_confounds and (confounds is not None):
             confounds = self.encoder.proj_confound(confounds.view(-1,1))
-            confounds = repeat(confounds, 'b d -> b n d', n=num_patches+1) if (not self.encoder.no_class_emb) else repeat(confounds, 'b d -> b n d', n=num_patches)
+            confounds = repeat(confounds, 'b d -> b n d', n=num_patches+1) if (not self.encoder.no_class_token_emb) else repeat(confounds, 'b d -> b n d', n=num_patches)
             x += confounds
         
         # attend with vision transformer

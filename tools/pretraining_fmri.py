@@ -16,6 +16,7 @@ import argparse
 from statistics import mode
 import yaml
 import sys
+import time
 
 #remove warnings
 def warn(*args, **kwargs):
@@ -25,10 +26,11 @@ warnings.warn = warn
 
 
 sys.path.append('../')
+sys.path.append('../../')
 sys.path.append('./')
 sys.path.append('../models/')
-sys.path.append('./workspace/sMAE/')
-from tools.utils import logging_sit, save_reconstruction_mae, get_data_path, get_dataloaders, get_dimensions, get_scheduler
+sys.path.append('./workspace/fMRI_transformers/')
+from tools.utils import logging_sit, get_data_path, get_dataloaders, get_dimensions, get_scheduler
 
 from datetime import datetime
 
@@ -41,17 +43,18 @@ from models.sit import SiT
 from models.mpp import masked_patch_pretraining
 from models.mae import MAE
 from models.smae import sMAE
+from models.vsmae import vsMAE
+
+from einops import rearrange
 
 from torch.utils.tensorboard import SummaryWriter
-
 from tools.log import tensorboard_log_pretrain_trainset, log_pretrain, save_reconstruction_pretain, \
-                        tensorboard_log_pretrain_valset, saving_ckpt_pretrain, save_reconstruction_pretrain_fmri
-
+                        tensorboard_log_pretrain_valset, saving_ckpt_pretrain, save_reconstruction_pretrain_fmri, \
+                        save_reconstruction_pretrain_fmri_valset
 
 
 def train(config):
-
-
+    
     #############################
     ######     CONFIG      ######
     #############################
@@ -71,15 +74,16 @@ def train(config):
 
     #data
     dataset = config['data']['dataset']
-    task = config['data']['task']
     configuration = config['data']['configuration']
     hemi = config['data']['hemi']
+    task = config['data']['task'] 
 
     #training
     gpu = config['training']['gpu']
     LR = config['training']['LR']
     use_confounds = config['training']['use_confounds']
     early_stopping = config['training']['early_stopping']
+    dataloader = config['data']['dataloader']
 
     if config['MODEL'] == 'sit':    
         channels = config['transformer']['channels']
@@ -99,7 +103,6 @@ def train(config):
     print('method: {}'.format(config['SSL']))
     print('gpu: {}'.format(device))   
     print('dataset: {}'.format(dataset))  
-    print('task: {}'.format(task))  
     print('model: {}'.format(config['MODEL']))
     print('configuration: {}'.format(configuration))  
     print('data path: {}'.format(data_path))
@@ -108,20 +111,21 @@ def train(config):
     ######     DATASET      ######
     ##############################
 
-    print('')
-    print('#'*30)
-    print('######## Loading data ########')
-    print('#'*30)
-    print('')
-    if config['MODEL'] == 'sit':
+    if config['MODEL'] == 'sit' or config['MODEL'] == 'ms-sit':
+        print('')
         print('Mesh resolution - ico {}'.format(ico_mesh))
         print('Grid resolution - ico {}'.format(ico_grid))
         print('Number of patches - {}'.format(num_patches))
         print('Number of vertices - {}'.format(num_vertices))
+        print('Reorder patches: {}'.format(config['mesh_resolution']['reorder']))
         print('')
 
     try:
-        train_loader, val_loader, test_loader = get_dataloaders(config,data_path)
+        if str(dataloader)=='metrics':
+            train_loader, val_loader, test_loader = get_dataloaders(config,data_path)
+        elif str(dataloader)=='bold':
+            train_loader, val_loader = get_dataloaders(config,data_path)
+        print('')
     except:
         raise("can't get dataloaders")
 
@@ -227,7 +231,6 @@ def train(config):
                     decoder_dim_head = config['pretraining_mae']['decoder_dim_head'],
                     use_pos_embedding_decoder=config['pretraining_mae']['use_pos_embedding_decoder'],
                     use_all_patch_loss= config['pretraining_mae']['use_all_patch_loss'],
-                    loss=config['pretraining_mae']['loss'],
                     mask=config['data']['masking'],
                     dataset=dataset,
                     configuration = configuration,
@@ -251,13 +254,35 @@ def train(config):
                     configuration = configuration,
                     num_channels=num_channels,
                     weights_init=config['pretraining_smae']['init_weights'],
-                    use_class_token_dec=config['pretraining_smae']['use_class_token_dec'],
-                    no_pos_emb_class_token_decoder=config['pretraining_smae']['no_pos_emb_class_token_decoder'],
+                    no_class_emb_decoder=config['pretraining_smae']['no_class_emb_decoder'],
                     mask=config['data']['masking'],
                     path_to_template=config['data']['path_to_template'],
                     path_to_workdir= config['data']['path_to_workdir'],
                     sampling=sampling,
                     sub_ico=ico_grid,)
+    
+    elif config['SSL'] == 'vsmae':
+
+        print('Pretrain using Vision Surface Masked AutoEncoder')
+        ssl = vsMAE(encoder=model, 
+                    decoder_dim=config['pretraining_vsmae']['decoder_dim'],
+                    masking_ratio=config['pretraining_vsmae']['mask_prob'],
+                    decoder_depth=config['pretraining_vsmae']['decoder_depth'],
+                    decoder_heads = config['pretraining_vsmae']['decoder_heads'],
+                    decoder_dim_head = config['pretraining_vsmae']['decoder_dim_head'],
+                    dataset=dataset,
+                    configuration = configuration,
+                    num_channels=num_channels,
+                    weights_init=config['pretraining_vsmae']['init_weights'],
+                    no_pos_emb_class_token_decoder=config['pretraining_vsmae']['no_pos_emb_class_token_decoder'],
+                    mask=config['data']['masking'],
+                    path_to_template=config['data']['path_to_template'],
+                    path_to_workdir= config['data']['path_to_workdir'],
+                    sampling=sampling,
+                    sub_ico=ico_grid,
+                    masking_type=config['pretraining_vsmae']['masking_type'],
+                    nbr_frames = config['fMRI']['nbr_frames'],
+                    loss=config['pretraining_vsmae']['loss'] )
     else:
         raise('not implemented yet')  
     
@@ -299,7 +324,7 @@ def train(config):
     log_training_it = config['training']['log_training_it']
     log_val_it = config['training']['log_val_it']
 
-    scheduler = get_scheduler(config, log_training_it, optimizer)
+    scheduler = get_scheduler(config, max_iterations, optimizer)
 
     ##################################
     ######     PRE-TRAINING     ######
@@ -318,39 +343,49 @@ def train(config):
     running_loss = 0
 
     while iter_count < max_iterations:
-        
+
         for i, data in enumerate(train_loader):
 
             ssl.train()
-
+            
             optimizer.zero_grad()
 
-            inputs, labels = data[0].to(device), data[1].to(device)
+            if task != 'None':
+                inputs, labels = data[0].to(device), data[1].to(device)
+            else:
+                inputs = data.to(device)
+
+            if config['training']['runtime']:
+                B,b,t,n,v = inputs.shape
+                inputs = rearrange(inputs, 'b t c n v -> (b t) c n v') 
+            else:
+                B,t,n,v = inputs.shape
 
             if use_confounds:
 
                 confounds = labels[:,1]
-                if config['SSL'] == 'mae' or config['SSL'] == 'smae':
+                if config['SSL'] == 'vsmae':
                     mpp_loss, reconstructed_batch, reconstructed_batch_unmasked, masked_indices, unmasked_indices= ssl(inputs,confounds)
 
             else:
 
-                if config['SSL'] == 'mae' or config['SSL'] == 'smae':
+                if config['SSL'] == 'vsmae':
                     mpp_loss, reconstructed_batch, reconstructed_batch_unmasked, masked_indices, unmasked_indices= ssl(inputs)
                 elif config['SSL'] == 'mpp':
                     mpp_loss, _ = ssl(inputs)
-                
+
             mpp_loss.backward()
             optimizer.step()
 
             running_loss += mpp_loss.item()
 
+            #tensorboard log train
             scheduler, writer = tensorboard_log_pretrain_trainset(config, writer, scheduler, optimizer, mpp_loss.item(),iter_count+1)
-
-
+            
             ##############################
             #########  LOG IT  ###########
             ##############################
+
 
             if (iter_count+1)%log_training_it==0:
 
@@ -358,31 +393,21 @@ def train(config):
 
                 log_pretrain(config, optimizer, scheduler, iter_count+1, loss_pretrain_it)
 
-                if (config['SSL'] in ['mae','smae']) and config['pretraining_mae']['save_reconstruction']:
-
-                    save_reconstruction_mae(reconstructed_batch[:1],
-                                            reconstructed_batch_unmasked[:1],
-                                                inputs, 
-                                                num_patches,
-                                                num_vertices,
-                                                ico_grid,
-                                                num_channels,
+                save_reconstruction_pretrain_fmri(config,
+                                                reconstructed_batch[:1],
+                                                reconstructed_batch_unmasked[:1],
+                                                inputs[:1],
                                                 masked_indices[:1],
                                                 unmasked_indices[:1],
-                                                str(int(iter_count+1)).zfill(6),
-                                                folder_to_save_model,
-                                                split='train',
-                                                path_to_workdir=config['data']['path_to_workdir'],
-                                                id='0',
-                                                server = config['SERVER']
-                                                )
-            
+                                                iter_count+1,
+                                                folder_to_save_model,)
+
             ##############################
             ######    VALIDATION    ######
             ##############################
 
-            if (iter_count+1)%log_val_it==0: 
-                
+            if (iter_count+1)%log_val_it==0:
+
                 running_val_loss = 0
                 ssl.eval()
 
@@ -390,16 +415,18 @@ def train(config):
 
                     for i, data in enumerate(val_loader):
 
-                        inputs, _ = data[0].to(device), data[1].to(device)
+                        if task != 'None':
+                            inputs, labels = data[0].to(device), data[1].to(device)
+                        else:
+                            inputs = data.to(device)
 
-                        if config['SSL'] == 'mae' or config['SSL'] == 'smae':
+                        if  config['SSL'] == 'vsmae':
                             mpp_loss, reconstructed_batch, reconstructed_batch_unmasked, masked_indices, unmasked_indices = ssl(inputs)
                         elif config['SSL'] == 'mpp':
                             mpp_loss, _ = ssl(inputs)
 
                         running_val_loss += mpp_loss.item()
                     
-
                 loss_pretrain_val_epoch = running_val_loss /(i+1)
 
                 writer = tensorboard_log_pretrain_valset(writer, loss_pretrain_val_epoch, iter_count+1)
@@ -408,31 +435,27 @@ def train(config):
                     best_val_loss = loss_pretrain_val_epoch
                     c_early_stop = 0
 
-                    if (config['SSL'] in ['mae','smae'] and config['pretraining_mae']['save_reconstruction']):
+                    if (config['SSL'] == 'vsmae' and config['pretraining_vsmae']['save_reconstruction']):
                         for i, data in enumerate(val_loader):
                             if i<3:
-                                inputs, _ = data[0].to(device), data[1].to(device)
+                                if task != 'None':
+                                    inputs, labels = data[0].to(device), data[1].to(device)
+                                else:
+                                    inputs = data.to(device)
 
                                 mpp_loss, reconstructed_batch, reconstructed_batch_unmasked, masked_indices, unmasked_indices = ssl(inputs)
 
-                                save_reconstruction_mae(
-                                                        reconstructed_batch,
-                                                        reconstructed_batch_unmasked,    
-                                                        inputs, 
-                                                        num_patches,
-                                                        num_vertices,
-                                                        ico_grid,
-                                                        num_channels,
-                                                        masked_indices,
-                                                        unmasked_indices,
-                                                        str(int(iter_count+1)).zfill(6),
-                                                        folder_to_save_model,
-                                                        split='val',
-                                                        path_to_workdir=config['data']['path_to_workdir'],
-                                                        id = i,
-                                                        server = config['SERVER']
-                                                        )
-
+                                save_reconstruction_pretrain_fmri_valset(config,
+                                                            reconstructed_batch,
+                                                            reconstructed_batch_unmasked,
+                                                            inputs,
+                                                            masked_indices, 
+                                                            unmasked_indices,
+                                                            iter_count+1,
+                                                            folder_to_save_model,
+                                                            id=i,
+                                                            )
+                    
 
                     config = saving_ckpt_pretrain(config,
                                                   iter_count+1,
@@ -443,20 +466,21 @@ def train(config):
                                                 ssl,
                                                 optimizer)
         
+                    
                 elif early_stopping:
                     c_early_stop += 1
-                
+
                 with open(os.path.join(folder_to_save_model,'hparams.yml'), 'w') as yaml_file:
                     yaml.dump(config, yaml_file)
-
+            
             iter_count += 1
             if iter_count >= max_iterations:
                 break
-
+            
             if early_stopping and (c_early_stop>=early_stopping):
                 print('stop training - early stopping')
                 break
-
+    
             ##################################
             ######   UPDATE SCHEDULER  #######
             ##################################
@@ -465,21 +489,14 @@ def train(config):
                 if config['optimisation']['scheduler'] == 'ReduceLROnPlateau':
                     scheduler.step(metrics=loss_pretrain_val_epoch)
 
-            
-        if early_stopping and (c_early_stop>=early_stopping):
-            print('stop training - early stopping')
-            break
-
-
     print('Training is finished!')
-
-    config['logging']['folder_model_saved'] = folder_to_save_model
-    config['results']['final_loss'] = loss_pretrain_it
 
     if early_stopping and (c_early_stop>=early_stopping):
         config['results']['training_finished'] = 'early stopping' 
     else:
         config['results']['training_finished'] = True 
+
+    config['results']['final_loss'] = loss_pretrain_it
 
     with open(os.path.join(folder_to_save_model,'hparams.yml'), 'w') as yaml_file:
         yaml.dump(config, yaml_file)
@@ -488,7 +505,7 @@ def train(config):
     #####################################
     ######    SAVING FINAL CKPT    ######
     #####################################
-        
+    
     print('Saving final checkpoint...')
 
     torch.save({'epoch':iter_count+1,
@@ -504,10 +521,8 @@ def train(config):
                 'loss':loss_pretrain_it,
                 },
                 os.path.join(folder_to_save_model,'encoder-decoder-final.pt'))
-
+    
     print('Checkpoint saved!')
-
-
 
 if __name__ == '__main__':
 

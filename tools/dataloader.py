@@ -8,11 +8,12 @@ import pandas as pd
 sys.path.append('./')
 sys.path.append('./tools')
 
-from tools.datasets import dataset_cortical_surfaces, dataset_cortical_surfaces_segmentation
-
+from tools.datasets import *
 from tools.samplers import new_sampler_HCP_fluid_intelligence,sampler_preterm_birth_age, sampler_preterm_scan_age, sampler_sex_classification, sampler_UKB_scan_age, sampler_HCP_fluid_intelligence
 
 import torch
+
+##### METRICS DATALOADER ########
 
 def loader_metrics(data_path,
                     sampler,
@@ -328,64 +329,355 @@ def loader_metrics_segmentation(data_path,
 
         return train_loader, test_loader
     
+def loader_tfmri(data_path,
+                config,
+                split_cv=-1):
 
-'''
-def loader_numpy(data_path,
-                 sampler,
-                 bs,
-                 bs_val):
+    ###############################################################
+    #####################    TRAINING DATA    #####################
+    ###############################################################
 
-
-    train_data = np.load(os.path.join(data_path,'train_data.npy'))
-    train_label = np.load(os.path.join(data_path,'train_labels.npy'))
-
-    print('training data: {}'.format(train_data.shape))
-
-    train_data_dataset = torch.utils.data.TensorDataset(torch.from_numpy(train_data).float(),
-                                                    torch.from_numpy(train_label).float())
+    train_dataset = dataset_cortical_surfaces_tfmri(config=config,
+                                                    data_path=data_path,
+                                                    split='train',
+                                                    split_cv=split_cv)
 
 
-    val_data = np.load(os.path.join(data_path,'validation_data.npy'))
-    val_label = np.load(os.path.join(data_path,'validation_labels.npy'))
-
-    print('validation data: {}'.format(val_data.shape))
-
-   
-    val_data_dataset = torch.utils.data.TensorDataset(torch.from_numpy(val_data).float(),
-                                                    torch.from_numpy(val_label).float())
-
-
-    if sampler:
-        print('using sampler...')
-        sampler = sampler_preterm(train_label)
-        train_loader = torch.utils.data.DataLoader(train_data_dataset,
-                                                batch_size = bs,
-                                                sampler=sampler,
-                                                num_workers=16)
-    else:
+    #####################################
+    ###############  HCP   ##############
+    #####################################
+    if config['data']['dataset']=='HCP':
+        
         print('not using sampler...')
-        train_loader = torch.utils.data.DataLoader(train_data_dataset,
-                                                batch_size = bs,
-                                                shuffle=True,
-                                                num_workers=16)
+        print('shuffling == {}'.format(not config['RECONSTRUCTION']))
 
-    val_loader = torch.utils.data.DataLoader(val_data_dataset,
-                                            batch_size = bs_val,
-                                            shuffle=False,
-                                            num_workers=16)
+
+        assert config['training']['bs']%config['fMRI']['nbr_clip_sampled_fmri']==0
+        batch_size_training = config['training']['bs']//config['fMRI']['nbr_clip_sampled_fmri']
+        print('batch size training: {}'.format(batch_size_training))
+
+        train_loader = torch.utils.data.DataLoader(train_dataset,
+                                                    batch_size = batch_size_training,
+                                                    shuffle=(not config['RECONSTRUCTION']),
+                                                    num_workers=18,
+                                                    pin_memory=True)
     
-    test_data = np.load(os.path.join(data_path,'test_data.npy'))
-    test_label = np.load(os.path.join(data_path,'test_labels.npy')).reshape(-1)
 
-    print('testing data: {}'.format(test_data.shape))
+    ###############################################################
+    ####################    VALIDATION DATA    ####################
+    ###############################################################
 
-    test_data_dataset = torch.utils.data.TensorDataset(torch.from_numpy(test_data).float(),
-                                                    torch.from_numpy(test_label).float())
+    #if cross validation then test set = validation set
+    if split_cv == -1:
 
-    test_loader = torch.utils.data.DataLoader(test_data_dataset,
-                                            batch_size = bs_val,
-                                            shuffle=False,
-                                            num_workers=16)
+        val_dataset = dataset_cortical_surfaces_tfmri(data_path=data_path,
+                                                    config=config,
+                                                    split='val',
+                                                    split_cv=split_cv)
 
-    return train_loader, val_loader, test_loader
-'''
+        val_loader = torch.utils.data.DataLoader(val_dataset,
+                                                batch_size=config['training']['bs_val'],
+                                                shuffle=False,
+                                                num_workers=32)
+                
+    print('')
+    print('#'*30)
+    print('############ Data ############')
+    print('#'*30)
+    print('')
+
+    print('')
+    print('Training data: {}'.format(len(train_dataset)))
+    print('Validation data: {}'.format(len(val_dataset)))
+        
+    return train_loader, val_loader
+
+
+
+def loader_rfmri(data_path,
+                config,
+                split_cv=-1):
+
+    ###############################################################
+    #####################    TRAINING DATA    #####################
+    ###############################################################
+
+    train_dataset = dataset_cortical_surfaces_rfmri(config=config,
+                                                    data_path=data_path,
+                                                    split='train',
+                                                    split_cv=split_cv)
+
+
+    #####################################
+    ###############  HCP   ##############
+    #####################################
+    if config['data']['dataset']=='HCP':
+        
+        print('not using sampler...')
+        print('shuffling == {}'.format(not config['RECONSTRUCTION']))
+
+
+        assert config['training']['bs']%config['fMRI']['nbr_clip_sampled_fmri']==0
+        batch_size_training = config['training']['bs']//config['fMRI']['nbr_clip_sampled_fmri']
+        print('batch size training: {}'.format(batch_size_training))
+
+        train_loader = torch.utils.data.DataLoader(train_dataset,
+                                                    batch_size = batch_size_training,
+                                                    shuffle=(not config['RECONSTRUCTION']),
+                                                    num_workers=0,
+                                                    pin_memory=True)
+    
+
+    ###############################################################
+    ####################    VALIDATION DATA    ####################
+    ###############################################################
+
+    #if cross validation then test set = validation set
+    if split_cv == -1:
+
+        val_dataset = dataset_cortical_surfaces_rfmri(data_path=data_path,
+                                                    config=config,
+                                                    split='val',
+                                                    split_cv=split_cv)
+
+        val_loader = torch.utils.data.DataLoader(val_dataset,
+                                                batch_size=config['training']['bs_val'],
+                                                shuffle=False,
+                                                num_workers=32)
+                
+    print('')
+    print('#'*30)
+    print('############ Data ############')
+    print('#'*30)
+    print('')
+
+    print('')
+    print('Training data: {}'.format(len(train_dataset)))
+    print('Validation data: {}'.format(len(val_dataset)))
+        
+    return train_loader, val_loader
+
+    ###############################################################
+    #####################    TESTING DATA     #####################
+    ###############################################################
+            
+
+    test_dataset = dataset_cortical_surfaces_fmri(data_path=data_path,
+                                            config=config,
+                                            split='test',
+                                            split_cv=split_cv)
+
+
+    test_loader = torch.utils.data.DataLoader(test_dataset,
+                                            batch_size=config['training']['bs_val'],
+                                            shuffle=False, 
+                                            num_workers=32)
+    
+    train_dataset.logging()
+    
+    if split_cv ==-1:
+
+        print('')
+        print('#'*30)
+        print('############ Data ############')
+        print('#'*30)
+        print('')
+
+        print('')
+        print('Training data: {}'.format(len(train_dataset)))
+        print('Validation data: {}'.format(len(val_dataset)))
+        print('Testing data: {}'.format(len(test_dataset)))
+
+        return train_loader, val_loader, test_loader
+    
+    else:
+
+        print('')
+        print('#'*30)
+        print('########### Data ###########')
+        print('#'*30)
+        print('')
+
+        print('')
+        print('Training data: {}'.format(len(train_dataset)))
+        print('Testing data: {}'.format(len(test_dataset)))
+
+        return train_loader, test_loader
+
+##### TIMESERIES DATALOADER #####
+
+def loader_tfmri_runtime(data_path,
+                config,
+                split_cv=-1):
+
+    ###############################################################
+    #####################    TRAINING DATA    #####################
+    ###############################################################
+
+    train_dataset = dataset_cortical_surfaces_tfmri_runtime(config=config,
+                                                    data_path=data_path,
+                                                    split='train',
+                                                    split_cv=split_cv)
+
+
+    #####################################
+    ###############  HCP   ##############
+    #####################################
+    if config['data']['dataset']=='HCP':
+        
+        print('not using sampler...')
+        print('shuffling == {}'.format(not config['RECONSTRUCTION']))
+
+
+        assert config['training']['bs']%config['fMRI']['nbr_clip_sampled_fmri']==0
+        batch_size_training = config['training']['bs']//config['fMRI']['nbr_clip_sampled_fmri']
+        print('batch size training: {}'.format(batch_size_training))
+
+        train_loader = torch.utils.data.DataLoader(train_dataset,
+                                                    batch_size = batch_size_training,
+                                                    shuffle=(not config['RECONSTRUCTION']),
+                                                    num_workers=18,
+                                                    pin_memory=True)
+    
+
+    ###############################################################
+    ####################    VALIDATION DATA    ####################
+    ###############################################################
+
+    #if cross validation then test set = validation set
+    if split_cv == -1:
+
+        val_dataset = dataset_cortical_surfaces_tfmri_runtime(data_path=data_path,
+                                                    config=config,
+                                                    split='val',
+                                                    split_cv=split_cv)
+
+        val_loader = torch.utils.data.DataLoader(val_dataset,
+                                                batch_size=config['training']['bs_val'],
+                                                shuffle=False,
+                                                num_workers=32)
+                
+    print('')
+    print('#'*30)
+    print('############ Data ############')
+    print('#'*30)
+    print('')
+
+    print('')
+    print('Training data: {}'.format(len(train_dataset)))
+    print('Validation data: {}'.format(len(val_dataset)))
+        
+    return train_loader, val_loader
+
+
+def loader_rfmri_runtime(data_path,
+                config,
+                split_cv=-1):
+
+    ###############################################################
+    #####################    TRAINING DATA    #####################
+    ###############################################################
+
+    train_dataset = dataset_cortical_surfaces_rfmri_runtime(config=config,
+                                                    data_path=data_path,
+                                                    split='train',
+                                                    split_cv=split_cv)
+
+
+    #####################################
+    ###############  HCP   ##############
+    #####################################
+    if config['data']['dataset']=='HCP':
+        
+        print('not using sampler...')
+        print('shuffling == {}'.format(not config['RECONSTRUCTION']))
+
+
+        assert config['training']['bs']%config['fMRI']['nbr_clip_sampled_fmri']==0
+        batch_size_training = config['training']['bs']//config['fMRI']['nbr_clip_sampled_fmri']
+        print('batch size training: {}'.format(batch_size_training))
+
+        train_loader = torch.utils.data.DataLoader(train_dataset,
+                                                    batch_size = batch_size_training,
+                                                    shuffle=(not config['RECONSTRUCTION']),
+                                                    num_workers=0,
+                                                    pin_memory=True)
+    
+
+    ###############################################################
+    ####################    VALIDATION DATA    ####################
+    ###############################################################
+
+    #if cross validation then test set = validation set
+    if split_cv == -1:
+
+        val_dataset = dataset_cortical_surfaces_rfmri_runtime(data_path=data_path,
+                                                    config=config,
+                                                    split='val',
+                                                    split_cv=split_cv)
+
+        val_loader = torch.utils.data.DataLoader(val_dataset,
+                                                batch_size=config['training']['bs_val'],
+                                                shuffle=False,
+                                                num_workers=32)
+                
+    print('')
+    print('#'*30)
+    print('############ Data ############')
+    print('#'*30)
+    print('')
+
+    print('')
+    print('Training data: {}'.format(len(train_dataset)))
+    print('Validation data: {}'.format(len(val_dataset)))
+        
+    return train_loader, val_loader
+
+    ###############################################################
+    #####################    TESTING DATA     #####################
+    ###############################################################
+            
+
+    test_dataset = dataset_cortical_surfaces_fmri(data_path=data_path,
+                                            config=config,
+                                            split='test',
+                                            split_cv=split_cv)
+
+
+    test_loader = torch.utils.data.DataLoader(test_dataset,
+                                            batch_size=config['training']['bs_val'],
+                                            shuffle=False, 
+                                            num_workers=32)
+    
+    train_dataset.logging()
+    
+    if split_cv ==-1:
+
+        print('')
+        print('#'*30)
+        print('############ Data ############')
+        print('#'*30)
+        print('')
+
+        print('')
+        print('Training data: {}'.format(len(train_dataset)))
+        print('Validation data: {}'.format(len(val_dataset)))
+        print('Testing data: {}'.format(len(test_dataset)))
+
+        return train_loader, val_loader, test_loader
+    
+    else:
+
+        print('')
+        print('#'*30)
+        print('########### Data ###########')
+        print('#'*30)
+        print('')
+
+        print('')
+        print('Training data: {}'.format(len(train_dataset)))
+        print('Testing data: {}'.format(len(test_dataset)))
+
+        return train_loader, test_loader
+
+##################################
