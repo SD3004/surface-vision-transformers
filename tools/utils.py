@@ -59,9 +59,16 @@ def get_data_path(config):
     elif str(dataloader) == 'bold':
         if dataset == 'HCP':
             if modality == 'tfMRI':
-                data_path = os.path.join(config['data']['path_to_data'])
+                if config['training']['runtime']:
+                    data_path = os.path.join(config['data']['path_to_data'],'HCP','movie_task/fmri_7T_1.6')
+                else:
+                    data_path = os.path.join(config['data']['path_to_data'],'HCP','movie_frames')
             elif modality == 'rfMRI' or 'smooth_rfMRI':
-                data_path = os.path.join(config['data']['path_to_data'])
+                if config['training']['runtime']:
+                    data_path = os.path.join(config['data']['path_to_data'],'HCP','rest')
+                else:
+                    data_path = os.path.join(config['data']['path_to_data'],'HCP','rest_frames')
+
     else:
         raise('not implemented yet')
     
