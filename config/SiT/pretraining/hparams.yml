@@ -68,7 +68,7 @@ transformer:
   heads: 3 #3, 6, 12
   pool: 'cls'  # 'cls' or 'mean'
   num_classes: 1
-  channels: [0]
+  channels: [0,1,2,3]
   dim_head: 64 #64
   dropout: 0.0
   emb_dropout: 0.0
@@ -85,11 +85,11 @@ training:
   LR: 0.0003
   bs: 32
   bs_val: 1
-  epochs: 50
-  val_epoch: 1
-  log_training_epoch: 1 #default 5, fMRI 1
+  epochs: 500
+  val_epoch: 10
+  log_training_epoch: 10 #default 5, fMRI 1
   log_iteration: 20
-  gpu: 1
+  gpu: 0
   restart: False
   early_stopping: False
   init_weights: False #ssl, imagenet or False
