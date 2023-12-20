@@ -263,6 +263,7 @@ def save_reconstruction_pretrain_fmri(config,
                                     str(int(iter_count)).zfill(6),
                                     folder_to_save_model,
                                     split='train',
+                                    path_to_workdir=config['data']['path_to_workdir'],
                                     id='0',
                                     server = config['SERVER']
                                     )
@@ -278,7 +279,8 @@ def save_reconstruction_pretrain_fmri_valset(config,
                                       unmasked_indices,
                                       iter_count,
                                       folder_to_save_model,
-                                      id):
+                                      id,
+                                      ):
 
     #mesh_resolution
     ico_grid = config['mesh_resolution']['ico_grid']
@@ -298,6 +300,7 @@ def save_reconstruction_pretrain_fmri_valset(config,
                                     str(int(iter_count)).zfill(6),
                                     folder_to_save_model,
                                     split='val',
+                                    path_to_workdir=config['data']['path_to_workdir'],
                                     id=id,
                                     server = config['SERVER']
                                     )

@@ -861,6 +861,7 @@ class dataset_cortical_surfaces_tfmri(Dataset):
         self.temporal_rep = config['fMRI']['temporal_rep']
         self.temporal_lag = config['fMRI']['temporal_lag']
         self.nbr_clip_to_sample = config['fMRI']['nbr_clip_sampled_fmri'] if split == 'train' else 1
+        self.nbr_frames_to_extract = config['fMRI']['nbr_frames']
 
         assert config['training']['bs']%self.nbr_clip_to_sample==0
         
@@ -982,18 +983,33 @@ class dataset_cortical_surfaces_tfmri(Dataset):
 
             else: 
 
-                data = self.get_half_hemi(idx)
-                data = self.demean_(data)
-                data = self.normalise_(data)
-                data = self.extract_clip(data)
-                            
+                #get information for subject idx
+                subject_info = self.split_info.loc[idx]
+                #select only the subset from the task info from the corresponding movie
+
+                nbr_frames = subject_info['nbr_frames']
+
+                #sample one of the frame at random
+                frame = random.randint(0,nbr_frames-1)
+
+                frames_to_extract = self.extract_clip(nbr_frames,t_0=frame)
+
+                input_data = []
+                for f in frames_to_extract:
+                    input_data.append(self.get_half_hemi(idx,f.cpu().numpy()))
+
+                input_data = np.stack(input_data,axis=0)
+
+                input_data = self.normalise_(input_data)
+
                 if self.patching:
 
-                    sequence = self.get_sequence(data)
-                    #print(sequence.shape)
-                    sequence = self.temporal_mixing(sequence)
+                    sequence = self.get_sequence(input_data)
+                    if self.nbr_frames_to_extract > 1:
+                        sequence = self.temporal_mixing(sequence)
                     
-                    return torch.from_numpy(sequence).float()
+            return torch.from_numpy(sequence).float()
+
                     
     
     def get_half_hemi(self,idx, frame):
@@ -1011,7 +1027,7 @@ class dataset_cortical_surfaces_tfmri(Dataset):
         if len(data.shape)==1:
             data = np.expand_dims(data,0)
 
-        return data
+        return data.squeeze()
 
     def demean_(self,data):
         
@@ -1425,8 +1441,6 @@ class dataset_cortical_surfaces_rfmri(Dataset):
     def get_sequence(self,data):
 
         sequence = np.zeros((self.nbr_frames, self.nbr_patches, self.nbr_vertices))
-        #print(sequence.shape)
-        #print(data.shape)
         #import pdb;pdb.set_trace()
         for j in range(self.nbr_patches):
             indices_to_extract = self.triangle_indices[str(j)].to_numpy()
