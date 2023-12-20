@@ -45,6 +45,7 @@ data:
   path_to_template: /home/sd20/data/template_spheres
   path_to_workdir: /home/sd20/workspace/sMAE
   dataset: dHCP #dHCP, HCP, UKB
+  registration: msmall #msmsulc, msmall
   dataloader: metrics #metrics, numpy
   task: birth_age #scan_age, birth_age, scan_age_msmall,
   configuration: template
@@ -75,7 +76,7 @@ transformer:
   use_pos_embedding: 'sin-cos' #'trainable', 'sin-cos', False
   use_class_token: False #for mae:True (but not used)
   trainable_pos_emb: False #False #only for use_pos_embedding=trainable
-  no_class_emb: True #for mae: False
+  no_class_token_emb: True #for vsMAE set to TRUE! not using classification token position embedding
   init_weights: False #True
 
 
@@ -85,10 +86,9 @@ training:
   LR: 0.0003
   bs: 8
   bs_val: 1
-  epochs: 50
-  val_epoch: 1
-  log_training_epoch: 1 #default 5, fMRI 1
-  log_iteration: 20
+  iterations: 50
+  log_training_it: 10 #default 5, fMRI 1
+  log_val_it: 20
   gpu: 1
   restart: False
   early_stopping: False
@@ -98,6 +98,7 @@ training:
   path_from_ckpt: '../logs/ViT/pretraining/HCP/res_ico6_sub_ico2/2021-11-28-11:37:58-tiny/pretrained-net-final.pt'
   use_cross_validation: False
   sampler: False
+  runtime: False
   
 pretraining_mpp:
   mask_prob: 0.75 #0.5
@@ -141,7 +142,7 @@ optimisation:
   optimiser: AdamW #SGD, Adam, AdamW
   use_scheduler: False
   scheduler: CosineDecay  # CosineDecay, StepLR
-  warmup: True
+  warmup: False
   nbr_step_warmup: 100
 
 SGD:

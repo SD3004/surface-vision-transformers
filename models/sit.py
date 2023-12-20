@@ -49,7 +49,7 @@ class SiT(nn.Module):
                         weights_init = False, 
                         use_class_token = True,
                         trainable_pos_emb = True, 
-                        no_class_emb = False, 
+                        no_class_token_emb = False, 
                         ):
 
         super().__init__()
@@ -86,7 +86,7 @@ class SiT(nn.Module):
         self.num_patches = num_patches
         self.encoding_dim = dim
         self.use_class_token = use_class_token
-        self.no_class_emb = no_class_emb
+        self.no_class_token_emb = no_class_token_emb
         self.num_prefix_tokens = 1 if use_class_token else 0
 
         self.transformer = Transformer(dim, depth, heads, dim_head, mlp_ratio*dim, dropout)
@@ -101,12 +101,13 @@ class SiT(nn.Module):
         ### positional embeddings
         if self.use_pe == 'trainable':
             print('Using trainable positional embeddings')
-            self.pos_embedding = nn.Parameter(torch.randn(1, num_patches, dim) * .02, requires_grad=trainable_pos_emb) if no_class_emb \
+            self.pos_embedding = nn.Parameter(torch.randn(1, num_patches, dim) * .02, requires_grad=trainable_pos_emb) if no_class_token_emb \
                 else nn.Parameter(torch.randn(1, num_patches+self.num_prefix_tokens, dim), requires_grad=trainable_pos_emb)
         elif self.use_pe == 'sin-cos':
             print('Using Sin-Cos positional embeddings')
-            self.pos_embedding = nn.Parameter(torch.zeros(1, num_patches, dim) * .02, requires_grad=False) if no_class_emb \
+            self.pos_embedding = nn.Parameter(torch.zeros(1, num_patches, dim) * .02, requires_grad=False) if no_class_token_emb \
                 else nn.Parameter(torch.zeros(1, num_patches+self.num_prefix_tokens, dim), requires_grad=False)
+            print(self.pos_embedding.shape)
             self._init_pos_em()
         ####
         
@@ -136,7 +137,7 @@ class SiT(nn.Module):
             trunc_normal_(m.weight, std=.02)
     
     def _init_pos_em(self,):
-        num_patches =  self.num_patches if self.no_class_emb else self.num_patches +1
+        num_patches =  self.num_patches if self.no_class_token_emb else self.num_patches +1
         pos_embed = get_1d_sincos_pos_embed_from_grid(self.pos_embedding.shape[-1], np.arange(num_patches, dtype=np.float32))
         self.pos_embedding.data.copy_(torch.from_numpy(pos_embed).float().unsqueeze(0))
     
@@ -144,7 +145,7 @@ class SiT(nn.Module):
         
         b, n, _ = x.shape
         
-        if self.no_class_emb:
+        if self.no_class_token_emb:
             x = x + self.pos_embedding
             if self.use_class_token:
                 cls_tokens = repeat(self.cls_token, '1 1 d -> b 1 d', b = b)
@@ -154,14 +155,13 @@ class SiT(nn.Module):
                 cls_tokens = repeat(self.cls_token, '1 1 d -> b 1 d', b = b)
                 x = torch.cat((cls_tokens, x), dim=1)
             x = x + self.pos_embedding
-        print('HELLLOOOOOOOOOOOO')
-        import pdb;pdb.set_trace()
         return x 
         
 
     def forward(self, img, confounds=None):
         
         x = self.to_patch_embedding(img)
+
         b, n, _ = x.shape
         
         x = self.add_pos_embed(x)
@@ -188,4 +188,3 @@ if __name__ == '__main__':
                 depth = 12,
                 heads= 3,
                 weights_init=True)
-

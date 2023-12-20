@@ -1,6 +1,7 @@
 import torch
 import numpy as np
-        
+import pandas as pd        
+
 def sampler_preterm_birth_age(labels):
     total = len(labels)
     frac_0 = total / np.sum(labels[:]>=37)
@@ -138,3 +139,20 @@ def sampler_q_chat_class(labels):
     weights = torch.DoubleTensor(weights)                                       
     sampler = torch.utils.data.sampler.WeightedRandomSampler(weights, len(weights))
     return sampler    
+
+
+def balance_dataset(df):
+
+    # Split the dataframe based on the 'is_movie' column
+    df_1 = df[df['labels'] == 1]
+    df_0 = df[df['labels'] == 0]
+
+    # Determine the minimum count between the two dataframes
+    min_count = min(len(df_1), len(df_0))
+
+    # Sample the minimum count from each dataframe
+    sampled_df_1 = df_1.sample(min_count)
+    sampled_df_0 = df_0.sample(min_count)
+
+    # Concatenate the two sampled dataframes
+    return pd.concat([sampled_df_1, sampled_df_0], axis=0).reset_index(drop=True)
