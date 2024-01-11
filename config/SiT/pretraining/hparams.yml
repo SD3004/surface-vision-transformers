@@ -69,7 +69,7 @@ transformer:
   heads: 3 #3, 6, 12
   pool: 'cls'  # 'cls' or 'mean'
   num_classes: 1
-  channels: [0,1,2,3]
+  channels: [0]
   dim_head: 64 #64
   dropout: 0.0
   emb_dropout: 0.0

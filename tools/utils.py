@@ -366,6 +366,14 @@ def logging_sit(config, pretraining=False):
     if config['data']['low_train'] and config['data']['dataset']=='dHCP':
         folder_to_save_model = folder_to_save_model + '-{}%'.format(config['data']['low_train'])
 
+    if config['SSL'] == 'smae':
+        folder_to_save_model = folder_to_save_model + '-mask-{}'.format(config['pretraining_smae']['mask_prob'])
+    
+    if config['SSL'] == 'vsmae':
+        folder_to_save_model = folder_to_save_model + '-mask-{}'.format(config['pretraining_vsmae']['mask_prob'])
+    
+    folder_to_save_model = folder_to_save_model + '-bs-{}'.format(config['training']['bs'])
+
     return folder_to_save_model
 
 def logging_ms_sit(config, pretraining=False):
