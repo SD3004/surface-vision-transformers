@@ -16,7 +16,7 @@ import argparse
 from statistics import mode
 import yaml
 import sys
-import time
+import shutil
 
 #remove warnings
 def warn(*args, **kwargs):
@@ -32,12 +32,9 @@ sys.path.append('../models/')
 sys.path.append('/nfs/home/sdahan/workspace/sMAE/')
 from tools.utils import logging_sit, get_data_path, get_dataloaders, get_dimensions, get_scheduler
 
-from datetime import datetime
 
 import torch
-import torch.nn as nn
 import torch.optim as optim
-import numpy as np
 
 from models.sit import SiT
 from models.mpp import masked_patch_pretraining
@@ -84,6 +81,7 @@ def train(config):
     use_confounds = config['training']['use_confounds']
     early_stopping = config['training']['early_stopping']
     dataloader = config['data']['dataloader']
+    restart = config['training']['restart']
 
     if config['MODEL'] == 'sit':    
         channels = config['transformer']['channels']
@@ -106,6 +104,17 @@ def train(config):
     print('model: {}'.format(config['MODEL']))
     print('configuration: {}'.format(configuration))  
     print('data path: {}'.format(data_path))
+    if restart:
+        path_to_previous_ckpt = config['training']['path_from_ckpt']
+        try:
+            assert os.path.exists(path_to_previous_ckpt)
+            print('path to checkpoint exist')
+        except:
+            raise NotADirectoryError
+        print('')
+        print('### RESTARTING TRAINING FROM: ###')
+        print(path_to_previous_ckpt)
+        print('')
 
     ##############################
     ######     DATASET      ######
@@ -153,6 +162,25 @@ def train(config):
         print('folder already exist: {}'.format(folder_to_save_model))
     
     #tensorboard
+    if restart:
+        #copy the previous tb event
+        for file in os.listdir(path_to_previous_ckpt):
+            if file.startswith("events.out.tfevents"):
+                event_file_path = os.path.join(path_to_previous_ckpt, file)
+                
+                # Copy the event file to the new directory
+                shutil.copy(event_file_path, folder_to_save_model)
+                print(f"Copied {file} to {folder_to_save_model}")
+
+        for file in os.listdir(path_to_previous_ckpt):
+            if file.startswith("hparams.yml"):
+                event_file_path = os.path.join(path_to_previous_ckpt, 'hparams.yml')
+                
+                # Copy the event file to the new directory
+                shutil.copy(event_file_path, os.path.join(folder_to_save_model,'hparams_old.yml'))
+                print(f"Copied {file} to {folder_to_save_model}")
+
+
     writer = SummaryWriter(log_dir=folder_to_save_model)
 
     ##############################
@@ -188,16 +216,6 @@ def train(config):
                         use_class_token=config['transformer']['use_class_token'],
                         trainable_pos_emb=config['transformer']['trainable_pos_emb'],
                         no_class_token_emb = config['transformer']['no_class_token_emb'],)
-
-
-    if config['training']['restart']:
-        checkpoint = torch.load(config['training']['path_from_ckpt'])
-        model.load_state_dict(checkpoint['model_state_dict']) 
-        epoch_to_start = checkpoint['epoch']
-        print('Starting training from epoch  {}'.format(epoch_to_start))
-    else:
-        epoch_to_start= 0
-        print('Training from scratch')
 
     model.to(device)
 
@@ -291,6 +309,17 @@ def train(config):
     print('Number of parameters pretraining pipeline : {:,}'.format(sum(p.numel() for p in ssl.parameters() if p.requires_grad)))
     print('')
 
+    if config['training']['restart']:
+        checkpoint = torch.load(os.path.join(config['training']['path_from_ckpt'],'encoder-decoder-final.pt'))
+        ssl.load_state_dict(checkpoint['model_state_dict'],strict=True) 
+        iter_count = checkpoint['epoch']
+        running_loss = checkpoint['loss'] * (iter_count-1)
+        print('Starting training from iteration  {}'.format(iter_count))
+    else:
+        iter_count= 0
+        running_loss = 0 
+        print('Training from scratch')
+
     #####################################
     #######     OPTIMISATION      #######
     #####################################
@@ -312,9 +341,12 @@ def train(config):
                                 weight_decay=config['AdamW']['weight_decay'])
     else:
         raise('not implemented yet')
-
+    
     if config['training']['restart']:
+        print('')
+        print('#### LOADING OPTIMIZER STATE ####')
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        print('Loading successfully')
     
     ###################################
     #######     SCHEDULING      #######
@@ -338,10 +370,7 @@ def train(config):
 
     best_val_loss = 100000000000
     c_early_stop = 0
-
-    iter_count=0
-    running_loss = 0
-
+    
     while iter_count < max_iterations:
 
         for i, data in enumerate(train_loader):
