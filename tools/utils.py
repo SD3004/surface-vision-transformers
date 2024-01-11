@@ -327,10 +327,8 @@ def save_label_MindBoggle(data, filename):
 
 
 def logging_sit(config, pretraining=False):
-
     if pretraining:
         folder_to_save_model = config['logging']['folder_to_save_model'].format(config['data']['path_to_workdir'],config['data']['dataset'],config['data']['modality'],'pretraining',config['data']['task'],config['SSL'],config['mesh_resolution']['ico_grid'],config['data']['configuration'])
-    
     else:
         folder_to_save_model = config['logging']['folder_to_save_model'].format(config['data']['path_to_workdir'],config['data']['dataset'],config['data']['modality'],config['data']['task'],config['mesh_resolution']['ico_grid'],config['data']['configuration'])
     
@@ -366,6 +364,17 @@ def logging_sit(config, pretraining=False):
     if config['data']['low_train'] and config['data']['dataset']=='dHCP':
         folder_to_save_model = folder_to_save_model + '-{}%'.format(config['data']['low_train'])
 
+    if config['SSL'] == 'smae':
+        folder_to_save_model = folder_to_save_model + '-mask-{}'.format(config['pretraining_smae']['mask_prob'])
+    
+    if config['SSL'] == 'vsmae':
+        folder_to_save_model = folder_to_save_model + '-mask-{}'.format(config['pretraining_vsmae']['mask_prob'])
+    
+    folder_to_save_model = folder_to_save_model + '-bs-{}'.format(config['training']['bs'])
+
+    if config['training']['restart']:
+        folder_to_save_model = folder_to_save_model + '-restart'
+        
     return folder_to_save_model
 
 def logging_ms_sit(config, pretraining=False):

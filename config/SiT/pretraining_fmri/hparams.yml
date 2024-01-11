@@ -12,7 +12,7 @@ SERVER: False
 
 mesh_resolution:
   ico_mesh: 6 #resolution of the input mesh
-  ico_grid: 2 #resolution of the grid used to extract patches
+  ico_grid: 3 #resolution of the grid used to extract patches
   sampling: msm #sampling used for mesh resampling and patch extraction #msm or wb
   reorder: False #reorder the sequence of patches
 
@@ -57,7 +57,7 @@ data:
   modality: tfMRI #cortical_metrics, fMRI, memory_task, rfMRI, tfMRI, smooth_rfMRI
   clipping: False #True, False
   balance: False
-  subset: True
+  subset: False
   low_train: False
 
 logging:
@@ -86,18 +86,18 @@ transformer:
 
 training:
   LR: 0.0003
-  bs: 16
+  bs: 8
   bs_val: 1
-  iterations: 50
-  log_training_it: 10 #default 5, fMRI 1
-  log_val_it: 20
-  gpu: 1
-  restart: False
+  iterations: 100000
+  log_training_it: 50 #default 5, fMRI 1
+  log_val_it: 200
+  gpu: 0
+  restart: True
   early_stopping: False
   init_weights: False #ssl, imagenet or False
   finetuning: True
   use_confounds: False
-  path_from_ckpt: '../logs/ViT/pretraining/HCP/res_ico6_sub_ico2/2021-11-28-11:37:58-tiny/pretrained-net-final.pt'
+  path_from_ckpt: /home/sd20/workspace/sMAE/logs/HCP/tfMRI/pretraining/None/vsmae/SiT/ico_grid_3/template/no_augmentation/2023-12-29-18:11:13-tiny-finetune-mask-0.5-bs-16
   use_cross_validation: False
   sampler: False
   early_stopping: 300
@@ -155,10 +155,10 @@ augmentation: # prob of augmentation techniques need to sum to 1
 ##################################  OPTIMISATION  ##################################
 
 optimisation:
-  optimiser: SGD
+  optimiser: Adam
   use_scheduler: False
   scheduler: CosineDecay  # CosineDecay, StepLR, ReduceLROnPlateau
-  warmup: True
+  warmup: False
   nbr_step_warmup: 1000
   momentum: 0.9 #default 0.
   nesterov: False
@@ -185,8 +185,8 @@ CosineDecay:
 fMRI:
   sampling_type: random #False, random, uniform, chunk
   nbr_frames: 3 #4
-  window: 4 #8
+  window: 3 #8
   average: False # True, False
   temporal_rep : concat #concat, avg, mix, channels,
-  temporal_lag: 2 # equivalent to starting sampling at t0+temporal_lag in seconds (typical peak of HRF at 4-6)
+  temporal_lag: 6 # equivalent to starting sampling at t0+temporal_lag in seconds (typical peak of HRF at 4-6)
   nbr_clip_sampled_fmri: 1 #8
