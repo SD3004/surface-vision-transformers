@@ -163,6 +163,7 @@ def train(config):
 
     T, N, V, use_bottleneck, bottleneck_dropout = get_dimensions(config)
 
+
     if config['MODEL'] == 'sit':
 
         model = SiT(dim=config['transformer']['dim'],

@@ -399,7 +399,6 @@ class dataset_cortical_surfaces(Dataset):
         else:
             print('Augmentation: NO')
 
-
 class dataset_cortical_surfaces_segmentation(Dataset):
     def __init__(self, 
                 data_path,
@@ -813,7 +812,6 @@ class dataset_cortical_surfaces_segmentation(Dataset):
                 print('     non-linear warping: no')
         else:
             print('Augmentation: NO')
-
 
 class dataset_cortical_surfaces_tfmri(Dataset):
     def __init__(self, 
@@ -1884,8 +1882,6 @@ class dataset_cortical_surfaces_tfmri_runtime(Dataset):
         else:
             print('Augmentation: NO')
             
-
-
 class dataset_cortical_surfaces_rfmri_runtime(Dataset):
     def __init__(self, 
                 data_path,

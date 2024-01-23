@@ -22,6 +22,7 @@ import numpy as np
 import subprocess
 
 from einops.layers.torch import Rearrange
+from einops import rearrange
 
 from tools.dataloader import *
 
@@ -687,14 +688,14 @@ def save_reconstruction_mae(reconstructed_batch,
         p1.wait()
         
 
-def save_reconstruction_mae_fmri(reconstructed_batch,
-                            reconstructed_batch_unmasked,
+def save_reconstruction_mae_fmri(reconstructed_batch_token_masked,
+                            reconstructed_batch_token_not_masked,
                             inputs, 
                             num_patches,
                             ico_grid,
                             num_frames,
-                            masked_indices,
-                            unmasked_indices,
+                            ids_tokens_masked,
+                            ids_tokens_not_masked,
                             epoch,
                             folder_to_save_model,
                             split,
@@ -726,70 +727,84 @@ def save_reconstruction_mae_fmri(reconstructed_batch,
         indices_to_extract = indices[str(i)].values
         original_sphere[indices_to_extract,:] = new_inputs[0,i,:,:].transpose()
     
-
-    save_gifti(original_sphere, os.path.join(folder_to_save_model,'reconstruction','{}'.format(split), 'original_sphere_{}_{}.shape.gii'.format(epoch,id)))
+    save_gifti(original_sphere, os.path.join(folder_to_save_model,'reconstruction','{}'.format(split), 'input_sphere_{}_{}.shape.gii'.format(epoch,id)))
 
     if not server:
         p1 = subprocess.Popen(['/home/sd20/software/workbench/bin_linux64/wb_command', '-set-structure',os.path.join(folder_to_save_model,'reconstruction','{}'.format(split), \
-                                                                                                                    'original_sphere_{}_{}.shape.gii'.format(epoch,id)), 'CORTEX_LEFT'])
+                                                                                                                    'input_sphere_{}_{}.shape.gii'.format(epoch,id)), 'CORTEX_LEFT'])
         p1.wait()
 
-    batch = np.transpose(reconstructed_batch.cpu().numpy(),(0,2,1,3))
-    batch_unmasked = np.transpose(reconstructed_batch_unmasked.cpu().numpy(),(0,2,1,3))
+    batch_tokens_masked = np.transpose(reconstructed_batch_token_masked.cpu().numpy(),(0,2,1,3))
+    batch_tokens_not_masked = np.transpose(reconstructed_batch_token_not_masked.cpu().numpy(),(0,2,1,3))
 
     reconstructed_sphere = np.zeros((40962,num_frames),dtype=np.float32)
 
     for i in range(num_patches):
         indices_to_extract = indices[str(i)].values
-        if i in masked_indices:
-            ind =  (masked_indices[0] == i).nonzero(as_tuple=True)[0][0].cpu().numpy()
-            reconstructed_sphere[indices_to_extract,:] = batch[0,ind,:,:].transpose()
-        elif i in unmasked_indices:
-            ind =  (unmasked_indices[0] == i).nonzero(as_tuple=True)[0][0].cpu().numpy()
-            reconstructed_sphere[indices_to_extract,:] = batch_unmasked[0,ind,:,:].transpose()
+        if i in ids_tokens_masked:
+            ind =  (ids_tokens_masked[0] == i).nonzero(as_tuple=True)[0][0].cpu().numpy()
+            reconstructed_sphere[indices_to_extract,:] = batch_tokens_masked[0,ind,:,:].transpose()
+        elif i in ids_tokens_not_masked:
+            ind =  (ids_tokens_not_masked[0] == i).nonzero(as_tuple=True)[0][0].cpu().numpy()
+            reconstructed_sphere[indices_to_extract,:] = batch_tokens_not_masked[0,ind,:,:].transpose()
         else:
             print('issue with indices: {}'.format(i))
 
     #import pdb;pdb.set_trace()
-    save_gifti(reconstructed_sphere, os.path.join(folder_to_save_model,'reconstruction', '{}'.format(split), 'reconstructed_sphere_{}_{}.shape.gii'.format(epoch,id)))
+    save_gifti(reconstructed_sphere, os.path.join(folder_to_save_model,'reconstruction', '{}'.format(split), 'output_sphere_{}_{}.shape.gii'.format(epoch,id)))
 
     if not server:
         p1 = subprocess.Popen(['/home/sd20/software/workbench/bin_linux64/wb_command', '-set-structure',os.path.join(folder_to_save_model,'reconstruction','{}'.format(split), \
-                                                                                                                    'reconstructed_sphere_{}_{}.shape.gii'.format(epoch,id)), 'CORTEX_LEFT'])
+                                                                                                                    'output_sphere_{}_{}.shape.gii'.format(epoch,id)), 'CORTEX_LEFT'])
         p1.wait()
 
     reconstructed_sphere_mask_only = np.zeros((40962,num_frames),dtype=np.float32)
 
     for i in range(num_patches):
         indices_to_extract = indices[str(i)].values
-        if i in masked_indices:
-            ind =  (masked_indices[0] == i).nonzero(as_tuple=True)[0][0].cpu().numpy()
-            reconstructed_sphere_mask_only[indices_to_extract,:] = batch[0,ind,:,:].transpose()
+        if i in ids_tokens_masked:
+            ind =  (ids_tokens_masked[0] == i).nonzero(as_tuple=True)[0][0].cpu().numpy()
+            reconstructed_sphere_mask_only[indices_to_extract,:] = batch_tokens_masked[0,ind,:,:].transpose()
 
     #import pdb;pdb.set_trace()
-    save_gifti(reconstructed_sphere_mask_only, os.path.join(folder_to_save_model,'reconstruction', '{}'.format(split), 'recon_mask_{}_{}_it_{}.shape.gii'.format(split,id,epoch)))
+    save_gifti(reconstructed_sphere_mask_only, os.path.join(folder_to_save_model,'reconstruction', '{}'.format(split), 'output_mask_only_{}_{}_it_{}.shape.gii'.format(split,id,epoch)))
 
     if not server:
         p1 = subprocess.Popen(['/home/sd20/software/workbench/bin_linux64/wb_command', '-set-structure',os.path.join(folder_to_save_model,'reconstruction', '{}'.format(split), \
-                                                                                                                    'recon_mask_{}_{}_it_{}.shape.gii'.format(split,id,epoch)), 'CORTEX_LEFT'])
+                                                                                                                    'output_mask_only_{}_{}_it_{}.shape.gii'.format(split,id,epoch)), 'CORTEX_LEFT'])
         p1.wait()
+    
+    reconstructed_sphere_not_mask_only = np.zeros((40962,num_frames),dtype=np.float32)
 
+    for i in range(num_patches):
+        indices_to_extract = indices[str(i)].values
+        if i in ids_tokens_not_masked:
+            ind =  (ids_tokens_not_masked[0] == i).nonzero(as_tuple=True)[0][0].cpu().numpy()
+            reconstructed_sphere_not_mask_only[indices_to_extract,:] = batch_tokens_not_masked[0,ind,:,:].transpose()
+
+    #import pdb;pdb.set_trace()
+    save_gifti(reconstructed_sphere_not_mask_only, os.path.join(folder_to_save_model,'reconstruction', '{}'.format(split), 'output_not_mask_only_{}_{}_it_{}.shape.gii'.format(split,id,epoch)))
+
+    if not server:
+        p1 = subprocess.Popen(['/home/sd20/software/workbench/bin_linux64/wb_command', '-set-structure',os.path.join(folder_to_save_model,'reconstruction', '{}'.format(split), \
+                                                                                                                    'output_not_mask_only_{}_{}_it_{}.shape.gii'.format(split,id,epoch)), 'CORTEX_LEFT'])
+        p1.wait()
 
     sphere_patched = np.zeros((40962,num_frames),dtype=np.float32)
 
     for i in range(num_patches):
         indices_to_extract = indices[str(i)].values
-        if i in masked_indices:
+        if i in ids_tokens_masked:
             sphere_patched[indices_to_extract,:] = 0
         else:
             sphere_patched[indices_to_extract,:] = new_inputs[0,i,:,:].transpose()
 
     #import pdb;pdb.set_trace()
-    save_gifti(sphere_patched, os.path.join(folder_to_save_model,'reconstruction', '{}'.format(split), 'sphere_patched_{}_{}.shape.gii'.format(epoch,id)))
+    save_gifti(sphere_patched, os.path.join(folder_to_save_model,'reconstruction', '{}'.format(split), 'input_masked_{}_{}.shape.gii'.format(epoch,id)))
 
     if not server:
         p1 = subprocess.Popen(['/home/sd20/software/workbench/bin_linux64/wb_command', '-set-structure',os.path.join(folder_to_save_model,'reconstruction','{}'.format(split), \
-                                                                                                                    'sphere_patched_{}_{}.shape.gii'.format(epoch,id)), 'CORTEX_LEFT'])
+                                                                                                                    'input_masked_{}_{}.shape.gii'.format(epoch,id)), 'CORTEX_LEFT'])
         p1.wait()
 
 

@@ -247,8 +247,6 @@ def loader_metrics(data_path,
 
         return train_loader, test_loader
 
-
-
 def loader_metrics_segmentation(data_path,
                                 labels_path,
                                 sampler,
@@ -392,8 +390,6 @@ def loader_tfmri(data_path,
     print('Validation data: {}'.format(len(val_dataset)))
         
     return train_loader, val_loader
-
-
 
 def loader_rfmri(data_path,
                 config,
