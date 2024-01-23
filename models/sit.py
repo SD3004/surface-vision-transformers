@@ -19,7 +19,7 @@ import torch
 from torch import nn
 import numpy as np
 
-from einops import rearrange, repeat
+from einops import repeat
 from einops.layers.torch import Rearrange
 
 from vit_pytorch.vit import Transformer

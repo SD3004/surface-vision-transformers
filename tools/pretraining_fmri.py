@@ -300,7 +300,8 @@ def train(config):
                     sub_ico=ico_grid,
                     masking_type=config['pretraining_vsmae']['masking_type'],
                     nbr_frames = config['fMRI']['nbr_frames'],
-                    loss=config['pretraining_vsmae']['loss'] )
+                    loss=config['pretraining_vsmae']['loss'],
+                    mask_loss=config['pretraining_vsmae']['mask_loss'])
     else:
         raise('not implemented yet')  
     
@@ -395,11 +396,9 @@ def train(config):
                 confounds = labels[:,1]
                 if config['SSL'] == 'vsmae':
                     mpp_loss, reconstructed_batch, reconstructed_batch_unmasked, masked_indices, unmasked_indices= ssl(inputs,confounds)
-
             else:
-
                 if config['SSL'] == 'vsmae':
-                    mpp_loss, reconstructed_batch, reconstructed_batch_unmasked, masked_indices, unmasked_indices= ssl(inputs)
+                    mpp_loss, reconstructed_batch_token_masked, reconstructed_batch_token_not_masked, ids_tokens_masked, ids_tokens_not_masked = ssl(inputs)
                 elif config['SSL'] == 'mpp':
                     mpp_loss, _ = ssl(inputs)
 
@@ -423,11 +422,11 @@ def train(config):
                 log_pretrain(config, optimizer, scheduler, iter_count+1, loss_pretrain_it)
 
                 save_reconstruction_pretrain_fmri(config,
-                                                reconstructed_batch[:1],
-                                                reconstructed_batch_unmasked[:1],
+                                                reconstructed_batch_token_masked[:1],
+                                                reconstructed_batch_token_not_masked[:1],
                                                 inputs[:1],
-                                                masked_indices[:1],
-                                                unmasked_indices[:1],
+                                                ids_tokens_masked[:1],
+                                                ids_tokens_not_masked[:1],
                                                 iter_count+1,
                                                 folder_to_save_model,)
 

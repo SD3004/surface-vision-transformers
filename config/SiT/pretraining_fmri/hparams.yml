@@ -12,7 +12,7 @@ SERVER: True
 
 mesh_resolution:
   ico_mesh: 6 #resolution of the input mesh
-  ico_grid: 3 #resolution of the grid used to extract patches
+  ico_grid: 2 #resolution of the grid used to extract patches
   sampling: msm #sampling used for mesh resampling and patch extraction #msm or wb
   reorder: False #reorder the sequence of patches
 
@@ -86,13 +86,13 @@ transformer:
 
 training:
   LR: 0.0003
-  bs: 8
+  bs: 16
   bs_val: 1
   iterations: 100000
   log_training_it: 50 #default 5, fMRI 1
   log_val_it: 200
   gpu: 0
-  restart: True
+  restart: False
   early_stopping: False
   init_weights: False #ssl, imagenet or False
   finetuning: True
@@ -132,7 +132,7 @@ pretraining_smae:
   no_class_emb_decoder: False
 
 pretraining_vsmae:
-  mask_prob: 0.50
+  mask_prob: 0.75
   decoder_dim: 192 
   decoder_depth: 3 
   decoder_heads: 3
@@ -143,6 +143,7 @@ pretraining_vsmae:
   use_class_token_dec: False
   no_pos_emb_class_token_decoder: True ##if using pos emb in class token decoder set to FALSE, else set to TRUE
   masking_type: tubelet #tubelet, random
+  mask_loss: False
 
 augmentation: # prob of augmentation techniques need to sum to 1
   prob_augmentation: 0.0  #probability of using any of the augmentation technique; 0.0 to not use any augmentation
@@ -184,8 +185,8 @@ CosineDecay:
 
 fMRI:
   sampling_type: random #False, random, uniform, chunk
-  nbr_frames: 3 #4
-  window: 3 #8
+  nbr_frames: 6 #4
+  window: 6 #8
   average: False # True, False
   temporal_rep : concat #concat, avg, mix, channels,
   temporal_lag: 6 # equivalent to starting sampling at t0+temporal_lag in seconds (typical peak of HRF at 4-6)
