@@ -39,7 +39,15 @@ import torch.optim as optim
 import numpy as np
 import pandas as pd
 
+from torch.optim.lr_scheduler import StepLR
+from torch.optim.lr_scheduler import ReduceLROnPlateau
+
+
 from models.sit import SiT
+from models.mpp import masked_patch_pretraining
+
+
+from warmup_scheduler import GradualWarmupScheduler
 
 from utils.utils import load_weights_imagenet
 
@@ -73,7 +81,7 @@ def train(config):
 
     print('')
     print('#'*30)
-    print('Config')
+    print('##### Config #####')
     print('#'*30)
     print('')
 
@@ -86,7 +94,7 @@ def train(config):
 
     print('')
     print('#'*30)
-    print('Loading data')
+    print('##### Loading data#####')
     print('#'*30)
     print('')
 
@@ -191,7 +199,7 @@ def train(config):
 
     print('')
     print('#'*30)
-    print('Init model')
+    print('##### Init model #####')
     print('#'*30)
     print('')
 
@@ -225,6 +233,37 @@ def train(config):
 
     model.to(device)
 
+    print('Number of parameters encoder: {:,}'.format(sum(p.numel() for p in model.parameters() if p.requires_grad)))
+    print('')
+
+    ##################################################
+    #######     SELF-SUPERVISION PIPELINE      #######
+    ##################################################
+
+    if config['SSL'] == 'mpp':
+
+        print('Pretrain using Masked Patch Prediction')
+        ssl = masked_patch_pretraining(transformer=model,
+                                    dim_in = config['transformer']['dim'],
+                                    dim_out= num_vertices*config['transformer']['num_channels'],
+                                    device=device,
+                                    mask_prob=config['pretraining_mpp']['mask_prob'],
+                                    replace_prob=config['pretraining_mpp']['replace_prob'],
+                                    swap_prob=config['pretraining_mpp']['swap_prob'],
+                                    num_vertices=num_vertices,
+                                    channels=config['transformer']['num_channels'])
+    else:
+        raise('not implemented yet')  
+    
+    ssl.to(device)
+
+    print('Number of parameters pretraining pipeline : {:,}'.format(sum(p.numel() for p in ssl.parameters() if p.requires_grad)))
+    print('')
+
+    #####################################
+    #######     OPTIMISATION      #######
+    #####################################
+
     if config['optimisation']['optimiser']=='Adam':
         print('using Adam optimiser')
         optimizer = optim.Adam(model.parameters(), lr=LR, weight_decay=config['Adam']['weight_decay'])
@@ -242,202 +281,141 @@ def train(config):
     else:
         raise('not implemented yet')
 
-    if not use_l1loss:
-        criterion = nn.MSELoss(reduction='mean')
-    else:
-        criterion = nn.L1Loss()
+    ###################################
+    #######     SCHEDULING      #######
+    ###################################
+    
+    it_per_epoch = np.ceil(len(train_loader))
 
-
-
-    best_mae = 100000000
-    mae_val_epoch = 100000000
-    running_val_loss = 100000000
-
-    print('Number of parameters: {:,}'.format(sum(p.numel() for p in model.parameters() if p.requires_grad)))
-    print('')
-
-    print('Using {} criterion'.format(criterion))
-
-    ##############################
-    ######     TRAINING     ######
-    ##############################
+    ##################################
+    ######     PRE-TRAINING     ######
+    ##################################
 
     print('')
     print('#'*30)
-    print('Starting training')
+    print('#### Starting pre-training ###')
     print('#'*30)
     print('')
 
+    best_val_loss = 100000000000
+    c_early_stop = 0
+    
     for epoch in range(epochs):
+
+        ssl.train()
 
         running_loss = 0
 
-        model.train()
-
-        targets_ =  []
-        preds_ = []
-
         for i, data in enumerate(train_loader):
 
-            inputs, targets = data[0].to(device), data[1].to(device)
+            inputs, _ = data[0].to(device), data[1].to(device)
 
             optimizer.zero_grad()
 
-            outputs = model(inputs)
-
-            loss = criterion(outputs.squeeze(), targets)
-
-            loss.backward()
+            if config['SSL'] == 'mpp':
+                mpp_loss, _ = ssl(inputs)
+                
+            mpp_loss.backward()
             optimizer.step()
 
-            running_loss += loss.item()
-            
-            targets_.append(targets.cpu().numpy())
-            preds_.append(outputs.reshape(-1).cpu().detach().numpy())
+            running_loss += mpp_loss.item()
 
-            writer.add_scalar('loss/train', loss.item(), epoch+1)
-        
-        mae_epoch = np.mean(np.abs(np.concatenate(targets_) - np.concatenate(preds_)))
+            writer.add_scalar('loss/train_it', mpp_loss.item(), epoch*it_per_epoch+1)
 
-        writer.add_scalar('mae/train',mae_epoch, epoch+1)
-        
+        ##############################
+        #########  LOG IT  ###########
+        ##############################
+
         if (epoch+1)%5==0:
-            print('| Epoch - {} | Loss - {:.4f} | MAE - {:.4f} | LR - {}'.format(epoch+1, running_loss/(i+1), round(mae_epoch,4), optimizer.param_groups[0]['lr']))
+
+            print('| Epoch - {} | It - {} | Loss - {:.4f} | LR - {}'.format(epoch+1, epoch*it_per_epoch + i +1, running_loss / (i+1), optimizer.param_groups[0]['lr']))
+        
+        loss_pretrain_epoch = running_loss / (i+1)
+
+        writer.add_scalar('loss/train', loss_pretrain_epoch, epoch+1)
+
 
         ##############################
         ######    VALIDATION    ######
         ##############################
 
-        if (epoch+1)%val_epoch==0:
-
+        if (epoch+1)%val_epoch==0: 
+            
             running_val_loss = 0
-
-            model.eval()
+            ssl.eval()
 
             with torch.no_grad():
 
-                targets_ = []
-                preds_ = []
-
                 for i, data in enumerate(val_loader):
 
-                    inputs, targets = data[0].to(device), data[1].to(device)
+                    inputs, _ = data[0].to(device), data[1].to(device)
 
-                    outputs = model(inputs)
+                    if config['SSL'] == 'mpp':
+                        mpp_loss, _ = ssl(inputs)
 
-                    loss = criterion(outputs.squeeze(), targets)
+                    running_val_loss += mpp_loss.item()
 
-                    running_val_loss += loss.item()
+            loss_pretrain_val_epoch = running_val_loss /(i+1)
 
-                    targets_.append(targets.cpu().numpy())
-                    preds_.append(outputs.reshape(-1).cpu().numpy())
+            writer.add_scalar('loss/val', loss_pretrain_val_epoch, epoch+1)
 
-            writer.add_scalar('loss/val', running_val_loss, epoch+1)
+            print('| Validation | Epoch - {} | Loss - {} | '.format(epoch+1, loss_pretrain_val_epoch))
 
-            mae_val_epoch = np.mean(np.abs(np.concatenate(targets_)- np.concatenate(preds_)))
-
-            writer.add_scalar('mae/val',mae_val_epoch, epoch+1)
-
-            print('| Validation | Epoch - {} | Loss - {:.4f} | MAE - {:.4f} |'.format(epoch+1, running_val_loss, mae_val_epoch ))
-
-            if mae_val_epoch < best_mae:
-                best_mae = mae_val_epoch
+            if loss_pretrain_val_epoch < best_val_loss:
+                best_val_loss = loss_pretrain_val_epoch
                 best_epoch = epoch+1
+                c_early_stop = 0
 
-                df = pd.DataFrame()
-                df['preds'] = np.concatenate(preds_).reshape(-1)
-                df['targets'] = np.concatenate(targets_).reshape(-1)
-                df.to_csv(os.path.join(folder_to_save_model, 'preds_test.csv'))
-
-                config['logging']['folder_model_saved'] = folder_to_save_model
                 config['results'] = {}
-                config['results']['best_mae'] = float(best_mae)
                 config['results']['best_epoch'] = best_epoch
-                config['results']['training_finished'] = False 
+                config['results']['best_current_loss'] = loss_pretrain_epoch
+                config['results']['best_current_loss_validation'] = best_val_loss
 
                 with open(os.path.join(folder_to_save_model,'hparams.yml'), 'w') as yaml_file:
-                    yaml.dump(config, yaml_file)
+                        yaml.dump(config, yaml_file)
 
-                if config['training']['save_ckpt']:
-                    print('saving model checkpoint...')
-                    torch.save(model.state_dict(), os.path.join(folder_to_save_model,'checkpoint.pth'))
+                print('saving_model')
+                torch.save({ 'epoch':epoch+1,
+                             'model_state_dict': model.state_dict(),
+                             'optimizer_state_dict': optimizer.state_dict(),
+                             'loss':loss_pretrain_epoch,
+                             },
+                            os.path.join(folder_to_save_model, 'encoder-best.pt'))
+                torch.save({ 'epoch':epoch+1,
+                             'model_state_dict': ssl.state_dict(),
+                             'optimizer_state_dict': optimizer.state_dict(),
+                             'loss':loss_pretrain_epoch,
+                             },
+                            os.path.join(folder_to_save_model, 'encoder-decoder-best.pt'))
 
-    
-    print('Final results: best model obtained at epoch {} - mean absolute error {}'.format(best_epoch,best_mae))
+    print('')
+    print('Final results: best model obtained at epoch {} - loss {}'.format(best_epoch,best_val_loss))
 
     config['logging']['folder_model_saved'] = folder_to_save_model
-    config['results'] = {}
-    config['results']['best_mae'] = float(best_mae)
-    config['results']['best_epoch'] = best_epoch
+    config['results']['final_loss'] = loss_pretrain_epoch
     config['results']['training_finished'] = True 
-    
-    ##############################
-    ######     TESTING      ######
-    ##############################
 
-    if testing:
-        print('LOADING TESTING DATA: ICO {} - sub-res ICO {}'.format(ico,sub_ico))
-
-        del train_data
-        del val_data
-        del model
-        torch.cuda.empty_cache()
-
-        test_model = SiT(dim=config['transformer']['dim'],
-                    depth=config['transformer']['depth'],
-                    heads=config['transformer']['heads'],
-                    mlp_dim=config['transformer']['mlp_dim'],
-                    pool=config['transformer']['pool'], 
-                    num_patches=num_patches,
-                    num_classes=config['transformer']['num_classes'],
-                    num_channels=config['transformer']['num_channels'],
-                    num_vertices=num_vertices,
-                    dim_head=config['transformer']['dim_head'],
-                    dropout=config['transformer']['dropout'],
-                    emb_dropout=config['transformer']['emb_dropout'])
+    with open(os.path.join(folder_to_save_model,'hparams.yml'), 'w') as yaml_file:
+        yaml.dump(config, yaml_file)
 
 
-        print('loading model')
-        test_model.load_state_dict(torch.load(os.path.join(folder_to_save_model,'checkpoint.pth')))
+    #####################################
+    ######    SAVING FINAL CKPT    ######
+    #####################################
 
-        test_model.to(device)
+    torch.save({'epoch':epoch+1,
+                'model_state_dict': model.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+                'loss':loss_pretrain_epoch,
+                },
+                os.path.join(folder_to_save_model,'encoder-final.pt'))
 
-        test_model.eval()
-
-        print('starting testing')
-
-        with torch.no_grad():
-
-            targets_ = []
-            preds_ = []
-
-            for i, data in enumerate(test_loader):
-
-                inputs, targets = data[0].to(device), data[1].to(device)
-
-                outputs = test_model(inputs)
-
-                targets_.append(targets.cpu().numpy())
-                preds_.append(outputs.reshape(-1).cpu().numpy())
-
-            mae_test_epoch = np.mean(np.abs(np.concatenate(targets_)- np.concatenate(preds_)))
-
-            print('| TESTING RESULTS | MAE - {:.4f} |'.format( mae_test_epoch ))
-
-            config['results']['testing'] = float(mae_test_epoch)
-
-            with open(os.path.join(folder_to_save_model,'hparams.yml'), 'w') as yaml_file:
-                yaml.dump(config, yaml_file)
-
-            df = pd.DataFrame()
-            df['preds'] = np.concatenate(preds_).reshape(-1)
-            df['targets'] = np.concatenate(targets_).reshape(-1)
-            df.to_csv(os.path.join(folder_to_save_model, 'preds_test.csv'))
-
-    else:
-
-        with open(os.path.join(folder_to_save_model,'hparams.yml'), 'w') as yaml_file:
-            yaml.dump(config, yaml_file)
+    torch.save({'epoch':epoch+1,
+                'model_state_dict': ssl.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+                'loss':loss_pretrain_epoch,
+                },
+                os.path.join(folder_to_save_model,'encoder-decoder-final.pt'))
 
 
 if __name__ == '__main__':

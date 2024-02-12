@@ -1,5 +1,8 @@
 # @Author: Simon Dahan
 # @Last Modified time: 2022-01-12 14:11:23
+
+SSL: mpp
+
 resolution:
   ico: 6            ## full mesh resolution
   sub_ico: 2        ## patching grid resolution
@@ -14,7 +17,7 @@ logging:
   folder_to_save_model: "../logs/SiT/"
 
 training:
-  LR: 0.00001
+  LR: 0.0003
   bs: 256
   bs_val: 1
   epochs: 100
@@ -46,6 +49,11 @@ transformer:
   dropout: 0.0
   emb_dropout: 0.0
   model: SiT
+
+pretraining_mpp:
+  mask_prob: 0.75 #0.5
+  replace_prob: 0.8 #0.8
+  swap_prob: 0.02 #0.02
 
 optimisation:
   optimiser: SGD
