@@ -16,9 +16,7 @@ Here, Surface Vision Transformer (**SiT**) is applied on cortical data for pheno
     Major codebase update - 12.02.24
     <ul type="circle">
         <li> Adding masked patch pretraining code to codebase</li>
-        <li> can by simply run with ```
-                python pretrain.py ../config/SiT/pretraining/mpp.yml
-                ```          </li>
+        <li> can be run as simply as with: python pretrain.py ../config/SiT/pretraining/mpp.yml </li>
     </ul>
 </details>
 
