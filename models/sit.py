@@ -21,7 +21,7 @@ from torch import nn
 from einops import rearrange, repeat
 from einops.layers.torch import Rearrange
 
-from vit_pytorch.vit import Transformer, Attention, FeedForward, PreNorm
+from vit_pytorch.vit import Transformer
 
 from timm.models.layers import trunc_normal_
 
@@ -124,9 +124,10 @@ class SiT(nn.Module):
             confounds = self.proj_confound(confounds.view(-1,1))
             confounds = repeat(confounds, 'b d -> b n d', n=n+1)
 
+
         cls_tokens = repeat(self.cls_token, '1 1 d -> b 1 d', b = b)
-        
         x = torch.cat((cls_tokens, x), dim=1)
+
         if self.use_pe: 
             x += self.pos_embedding[:, :(n + 1)]
         if self.use_confounds and (confounds is not None):

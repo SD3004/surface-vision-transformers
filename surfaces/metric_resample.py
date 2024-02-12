@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 """
 Created on Mon Dec  10 18:07:54 2022
-@author: Mohamed A. Suliman
 """
 import numpy as np
 import torch

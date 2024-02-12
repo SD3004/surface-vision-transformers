@@ -21,7 +21,7 @@ import numpy as np
 
 import subprocess
 
-from einops.layers.torch import Rearrange
+from einops import rearrange
 
 from tools.dataloader import loader_metrics, loader_metrics_segmentation
 
@@ -289,7 +289,7 @@ def logging_sit(config, pretraining=False):
         folder_to_save_model = config['logging']['folder_to_save_model'].format(config['data']['path_to_workdir'],config['data']['dataset'],config['data']['modality'],'pretraining',config['data']['task'],config['SSL'],config['mesh_resolution']['ico_grid'],config['data']['configuration'])
     
     else:
-        folder_to_save_model = config['logging']['folder_to_save_model'].format(config['data']['path_to_workdir'],config['data']['modality'],config['data']['task'],config['mesh_resolution']['ico_grid'],config['data']['configuration'])
+        folder_to_save_model = config['logging']['folder_to_save_model'].format(config['data']['path_to_workdir'],config['data']['dataset'],config['data']['modality'],config['data']['task'],config['mesh_resolution']['ico_grid'],config['data']['configuration'])
     
     if config['augmentation']['prob_augmentation']:
         folder_to_save_model = os.path.join(folder_to_save_model,'augmentation')
@@ -578,14 +578,12 @@ def save_reconstruction_mae(reconstructed_batch,
 
     save_gifti(original_sphere, os.path.join(folder_to_save_model,'reconstruction','{}'.format(split), 'original_sphere_{}.shape.gii'.format(epoch)))
 
-    B, num_masked_patch, V = reconstructed_batch.shape
-    rearrange_layer_masked = Rearrange('b m (v c) -> b c m v', b=B, m=num_masked_patch, c=num_channels, v=num_vertices)
+    B, num_masked_patch, V = reconstructed_batch.shape    
 
     B, num_unmasked_patch, V = reconstructed_batch_unmasked.shape
-    rearrange_layer_unmasked = Rearrange('b m (v c) -> b c m v', b=B, m=num_unmasked_patch, c=num_channels, v=num_vertices)
 
-    batch = rearrange_layer_masked(reconstructed_batch).cpu().numpy()
-    batch_unmasked = rearrange_layer_unmasked(reconstructed_batch_unmasked).cpu().numpy()
+    batch = rearrange(reconstructed_batch, 'b m (v c) -> b c m v', b=B, m=num_masked_patch, c=num_channels, v=num_vertices).cpu().numpy()
+    batch_unmasked = rearrange(reconstructed_batch_unmasked, 'b m (v c) -> b c m v', b=B, m=num_unmasked_patch, c=num_channels, v=num_vertices).cpu().numpy()
 
     reconstructed_sphere = np.zeros((40962,num_channels),dtype=np.float32)
 
@@ -656,13 +654,10 @@ def save_reconstruction_mae_test(reconstructed_batch,
     p1.wait()
 
     B, num_masked_patch, V = reconstructed_batch.shape
-    rearrange_layer_masked = Rearrange('b m (v c) -> b c m v', b=B, m=num_masked_patch, c=num_channels, v=num_vertices)
-
     B, num_unmasked_patch, V = reconstructed_batch_unmasked.shape
-    rearrange_layer_unmasked = Rearrange('b m (v c) -> b c m v', b=B, m=num_unmasked_patch, c=num_channels, v=num_vertices)
 
-    batch = rearrange_layer_masked(reconstructed_batch).cpu().numpy()
-    batch_unmasked = rearrange_layer_unmasked(reconstructed_batch_unmasked).cpu().numpy()
+    batch = rearrange(reconstructed_batch, 'b m (v c) -> b c m v', b=B, m=num_masked_patch, c=num_channels, v=num_vertices).cpu().numpy()
+    batch_unmasked = rearrange(reconstructed_batch_unmasked, 'b m (v c) -> b c m v', b=B, m=num_unmasked_patch, c=num_channels, v=num_vertices).cpu().numpy()
 
     reconstructed_sphere = np.zeros((40962,num_channels),dtype=np.float32)
 

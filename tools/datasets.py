@@ -229,7 +229,7 @@ class dataset_cortical_surfaces(Dataset):
         data =  np.array(nb.load(path).agg_data())
         if len(data.shape)==1:
             data = np.expand_dims(data,0)
-        data = data[self.channels,:]
+        data = data.T[self.channels,:] ##### CAREFUL !!!! I ADDED A .T
 
         # load individual mask if native
         if self.masking and self.dataset=='dHCP' and self.configuration=='native':

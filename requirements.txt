@@ -5,4 +5,8 @@ einops
 vit-pytorch
 nibabel
 tensorboard
+matplotlib
+scipy
+warmup_scheduler
+scikit-learn
 #warmup-scheduler
