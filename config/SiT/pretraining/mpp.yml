@@ -18,13 +18,13 @@ logging:
 
 training:
   LR: 0.0003
-  bs: 256
+  bs: 32
   bs_val: 1
-  epochs: 100
+  epochs: 20
   gpu: 0
   l1loss: False
   testing: False
-  val_epoch: 10
+  val_epoch: 5
   load_weights_ssl: False
   load_weights_imagenet: False
   save_ckpt: True
