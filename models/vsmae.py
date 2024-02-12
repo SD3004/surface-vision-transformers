@@ -158,7 +158,32 @@ class vsMAE(nn.Module):
             mask_binary = torch.gather(mask_binary, dim=1, index=ids_restore)
             mask_binary = repeat(mask_binary, 'b l -> b t l', t=self.nbr_frames)
             mask_binary = rearrange(mask_binary, 'b t l -> b (t l)')
-            #import pdb;pdb.set_trace()
+            import pdb;pdb.set_trace()
+            
+        elif masking_type == 'random':
+            
+            len_to_keep = int(N * (1 - mask_ratio))
+            
+            noise = torch.rand(B, N, device=x.device)  # noise in [0, 1]
+            # sort noise for each sample
+            ids_shuffle = torch.argsort(noise, dim=1)  # ascend: small is keep, large is remove
+            ids_restore = torch.argsort(ids_shuffle, dim=1)
+            
+            # keep the first subset
+            ids_tokens_not_masked = ids_shuffle[:, :len_to_keep]
+            ids_tokens_masked = ids_shuffle[:,len_to_keep:]
+            
+            # no need to unshape the x (input of shape b, (t l), c)
+            import pdb;pdb.set_trace()
+            x_not_masked = torch.gather(x, dim=1, index=ids_tokens_not_masked.unsqueeze(-1).repeat(1 ,1, V)) 
+            
+            # generate the binary mask: 0 is kept/not_masked, 1 is remove/mask
+            mask_binary = torch.ones([B, N], device=x.device)
+            mask_binary[:, :len_to_keep] = 0
+            # unshuffle to get the binary mask
+            mask_binary = torch.gather(mask_binary, dim=1, index=ids_restore)
+            import pdb;pdb.set_trace()
+            
 
         return x_not_masked, mask_binary, ids_restore, ids_tokens_not_masked, ids_tokens_masked
     
