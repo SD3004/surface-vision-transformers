@@ -143,7 +143,7 @@ pretraining_vsmae:
   use_class_token_dec: False
   no_pos_emb_class_token_decoder: True ##if using pos emb in class token decoder set to FALSE, else set to TRUE
   masking_type: random #tubelet, random
-  mask_loss: False
+  mask_loss: True
 
 augmentation: # prob of augmentation techniques need to sum to 1
   prob_augmentation: 0.0  #probability of using any of the augmentation technique; 0.0 to not use any augmentation
