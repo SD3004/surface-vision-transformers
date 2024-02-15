@@ -146,7 +146,7 @@ class SiT(nn.Module):
         b, n, _ = x.shape
         
         if self.no_class_token_emb:
-            x = x + self.pos_embedding
+            x = x + self.pos_embedding[:,:n,:]
             if self.use_class_token:
                 cls_tokens = repeat(self.cls_token, '1 1 d -> b 1 d', b = b)
                 x = torch.cat((cls_tokens, x), dim=1)      
@@ -154,7 +154,7 @@ class SiT(nn.Module):
             if self.use_class_token:
                 cls_tokens = repeat(self.cls_token, '1 1 d -> b 1 d', b = b)
                 x = torch.cat((cls_tokens, x), dim=1)
-            x = x + self.pos_embedding
+            x = x + self.pos_embedding[:,:n,:]
         return x 
         
 

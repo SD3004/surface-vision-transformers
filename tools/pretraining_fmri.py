@@ -311,7 +311,15 @@ def train(config):
     print('')
 
     if config['training']['restart']:
-        checkpoint = torch.load(os.path.join(config['training']['path_from_ckpt'],'encoder-decoder-final.pt'))
+
+
+        if os.path.exists(os.path.join(config['training']['path_from_ckpt'],'encoder-decoder-final.pt')):
+            print('##### Loading FINAL checkpoint #####')
+            checkpoint = torch.load(os.path.join(config['training']['path_from_ckpt'],'encoder-decoder-final.pt'))
+        else:
+            print('##### Loading BEST checkpoint #####')
+            checkpoint = torch.load(os.path.join(config['training']['path_from_ckpt'],'encoder-decoder-best.pt'))
+
         ssl.load_state_dict(checkpoint['model_state_dict'],strict=True) 
         iter_count = checkpoint['epoch']
         running_loss = checkpoint['loss'] * (iter_count-1)

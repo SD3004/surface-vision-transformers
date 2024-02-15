@@ -370,6 +370,9 @@ def logging_sit(config, pretraining=False):
     
     if config['SSL'] == 'vsmae':
         folder_to_save_model = folder_to_save_model + '-mask-{}'.format(config['pretraining_vsmae']['mask_prob'])
+
+    if config['SSL'] == 'vsmae':
+        folder_to_save_model = folder_to_save_model + '-frames-{}'.format(config['fMRI']['nbr_frames'])
     
     folder_to_save_model = folder_to_save_model + '-bs-{}'.format(config['training']['bs'])
 
@@ -739,6 +742,7 @@ def save_reconstruction_mae_fmri(reconstructed_batch_token_masked,
 
     reconstructed_sphere = np.zeros((40962,num_frames),dtype=np.float32)
 
+    #### MAYBE PUT THE NOT MASKED FIRST AND THEN PUT THE MASKED ON TOP OF IT
     for i in range(num_patches):
         indices_to_extract = indices[str(i)].values
         if i in ids_tokens_masked:
@@ -794,9 +798,7 @@ def save_reconstruction_mae_fmri(reconstructed_batch_token_masked,
 
     for i in range(num_patches):
         indices_to_extract = indices[str(i)].values
-        if i in ids_tokens_masked:
-            sphere_patched[indices_to_extract,:] = 0
-        else:
+        if i in ids_tokens_not_masked:
             sphere_patched[indices_to_extract,:] = new_inputs[0,i,:,:].transpose()
 
     #import pdb;pdb.set_trace()
