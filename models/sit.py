@@ -20,7 +20,7 @@ from torch import nn
 from einops import repeat
 from einops.layers.torch import Rearrange
 
-from vit_pytorch.vit import Transformer, Attention, FeedForward, PreNorm
+from vit_pytorch.vit import Transformer
 
 class SiT(nn.Module):
     def __init__(self, *,
