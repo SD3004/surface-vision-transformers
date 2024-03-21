@@ -194,6 +194,8 @@ def train(config):
     print('')
 
     T, N, V, use_bottleneck, bottleneck_dropout = get_dimensions(config)
+    
+    print('Dimensions: {}, {},{}'.format(T,N,V))
 
     if config['MODEL'] == 'sit':
 
@@ -299,9 +301,12 @@ def train(config):
                     sampling=sampling,
                     sub_ico=ico_grid,
                     masking_type=config['pretraining_vsmae']['masking_type'],
+                    temporal_rep = config['fMRI']['temporal_rep'],
                     nbr_frames = config['fMRI']['nbr_frames'],
                     loss=config['pretraining_vsmae']['loss'],
                     mask_loss=config['pretraining_vsmae']['mask_loss'])
+        
+        print('Masking type: {}'.format(config['pretraining_vsmae']['masking_type']))  
     else:
         raise('not implemented yet')  
     
@@ -311,7 +316,13 @@ def train(config):
     print('')
 
     if config['training']['restart']:
-        checkpoint = torch.load(os.path.join(config['training']['path_from_ckpt'],'encoder-decoder-final.pt'))
+        if os.path.exists(os.path.join(config['training']['path_from_ckpt'],'encoder-decoder-final.pt')):
+            print('##### Loading FINAL checkpoint #####')
+            checkpoint = torch.load(os.path.join(config['training']['path_from_ckpt'],'encoder-decoder-final.pt'))
+        else:
+            print('##### Loading BEST checkpoint #####')
+            checkpoint = torch.load(os.path.join(config['training']['path_from_ckpt'],'encoder-decoder-best.pt'))
+
         ssl.load_state_dict(checkpoint['model_state_dict'],strict=True) 
         iter_count = checkpoint['epoch']
         running_loss = checkpoint['loss'] * (iter_count-1)
@@ -348,7 +359,8 @@ def train(config):
         print('#### LOADING OPTIMIZER STATE ####')
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         print('Loading successfully')
-    
+
+ 
     ###################################
     #######     SCHEDULING      #######
     ###################################
@@ -390,7 +402,7 @@ def train(config):
                 inputs = rearrange(inputs, 'b t c n v -> (b t) c n v') 
             else:
                 B,t,n,v = inputs.shape
-
+                
             if use_confounds:
 
                 confounds = labels[:,1]
@@ -402,10 +414,12 @@ def train(config):
                 elif config['SSL'] == 'mpp':
                     mpp_loss, _ = ssl(inputs)
 
+
             mpp_loss.backward()
             optimizer.step()
 
             running_loss += mpp_loss.item()
+            #import pdb;pdb.set_trace()
 
             #tensorboard log train
             scheduler, writer = tensorboard_log_pretrain_trainset(config, writer, scheduler, optimizer, mpp_loss.item(),iter_count+1)
@@ -421,14 +435,16 @@ def train(config):
 
                 log_pretrain(config, optimizer, scheduler, iter_count+1, loss_pretrain_it)
 
-                save_reconstruction_pretrain_fmri(config,
-                                                reconstructed_batch_token_masked[:1],
-                                                reconstructed_batch_token_not_masked[:1],
-                                                inputs[:1],
-                                                ids_tokens_masked[:1],
-                                                ids_tokens_not_masked[:1],
-                                                iter_count+1,
-                                                folder_to_save_model,)
+                if (iter_count+1)%1000==0:
+
+                    save_reconstruction_pretrain_fmri(config,
+                                                    reconstructed_batch_token_masked[:1],
+                                                    reconstructed_batch_token_not_masked[:1],
+                                                    inputs[:1],
+                                                    ids_tokens_masked[:1],
+                                                    ids_tokens_not_masked[:1],
+                                                    iter_count+1,
+                                                    folder_to_save_model,)
 
             ##############################
             ######    VALIDATION    ######
@@ -473,16 +489,18 @@ def train(config):
 
                                 mpp_loss, reconstructed_batch, reconstructed_batch_unmasked, masked_indices, unmasked_indices = ssl(inputs)
 
-                                save_reconstruction_pretrain_fmri_valset(config,
-                                                            reconstructed_batch,
-                                                            reconstructed_batch_unmasked,
-                                                            inputs,
-                                                            masked_indices, 
-                                                            unmasked_indices,
-                                                            iter_count+1,
-                                                            folder_to_save_model,
-                                                            id=i,
-                                                            )
+                                if (iter_count+1)%1000==0:
+
+                                    save_reconstruction_pretrain_fmri_valset(config,
+                                                                reconstructed_batch,
+                                                                reconstructed_batch_unmasked,
+                                                                inputs,
+                                                                masked_indices, 
+                                                                unmasked_indices,
+                                                                iter_count+1,
+                                                                folder_to_save_model,
+                                                                id=i,
+                                                                )
                     
 
                     config = saving_ckpt_pretrain(config,

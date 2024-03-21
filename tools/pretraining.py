@@ -388,6 +388,8 @@ def train(config):
                 ssl.eval()
 
                 with torch.no_grad():
+                    
+                    loss_val_values = []
 
                     for i, data in enumerate(val_loader):
 
@@ -399,8 +401,9 @@ def train(config):
                             mpp_loss, _ = ssl(inputs)
 
                         running_val_loss += mpp_loss.item()
+                        loss_val_values.append(mpp_loss.item())
                     
-
+                import pdb; pdb.set_trace()
                 loss_pretrain_val_epoch = running_val_loss /(i+1)
 
                 writer = tensorboard_log_pretrain_valset(writer, loss_pretrain_val_epoch, iter_count+1)

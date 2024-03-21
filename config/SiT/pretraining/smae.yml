@@ -86,7 +86,7 @@ training:
   LR: 0.0003
   bs: 8
   bs_val: 1
-  iterations: 50
+  iterations: 1000
   log_training_it: 10 #default 5, fMRI 1
   log_val_it: 20
   gpu: 1

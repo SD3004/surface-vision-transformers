@@ -86,18 +86,18 @@ transformer:
 
 training:
   LR: 0.0003
-  bs: 1
+  bs: 64
   bs_val: 1
-  iterations: 100000
-  log_training_it: 50 #default 5, fMRI 1
-  log_val_it: 200
-  gpu: 0
+  iterations: 50000
+  log_training_it: 10 #default 5, fMRI 1
+  log_val_it: 20
+  gpu: 1
   restart: False
   early_stopping: False
   init_weights: False #ssl, imagenet or False
   finetuning: True
   use_confounds: False
-  path_from_ckpt: /home/sd20/workspace/sMAE/logs/HCP/tfMRI/pretraining/None/vsmae/SiT/ico_grid_3/template/no_augmentation/2023-12-29-18:11:13-tiny-finetune-mask-0.5-bs-16
+  path_from_ckpt: /home/sd20/workspace/sMAE/logs/HCP/tfMRI/pretraining/None/vsmae/SiT/ico_grid_2/template/no_augmentation/2024-02-16-22:04:26-tiny-finetune-mask-0.9-frames-3-bs-16
   use_cross_validation: False
   sampler: False
   early_stopping: 300
@@ -121,7 +121,7 @@ pretraining_mae:
   save_reconstruction: True
 
 pretraining_smae:
-  mask_prob: 0.50
+  mask_prob: 0.75
   decoder_dim: 192
   decoder_depth: 3 
   decoder_heads: 3
@@ -132,17 +132,17 @@ pretraining_smae:
   no_class_emb_decoder: False
 
 pretraining_vsmae:
-  mask_prob: 0.75
-  decoder_dim: 192 
+  mask_prob: 0.90
+  decoder_dim: 192 #192,384,768
   decoder_depth: 3 
-  decoder_heads: 3
+  decoder_heads: 3 #3,6,12
   decoder_dim_head: 64
-  loss: l1 #mse, l1
+  loss: mse #mse, l1
   init_weights: False #False
   save_reconstruction: True
   use_class_token_dec: False
   no_pos_emb_class_token_decoder: True ##if using pos emb in class token decoder set to FALSE, else set to TRUE
-  masking_type: random #tubelet, random
+  masking_type: tubelet #tubelet, random
   mask_loss: True
 
 augmentation: # prob of augmentation techniques need to sum to 1
@@ -185,8 +185,8 @@ CosineDecay:
 
 fMRI:
   sampling_type: random #False, random, uniform, chunk
-  nbr_frames: 3 #4
-  window: 3 #8
+  nbr_frames: 8 #4
+  window: 8 #8
   average: False # True, False
   temporal_rep : concat #concat, avg, mix, channels,
   temporal_lag: 6 # equivalent to starting sampling at t0+temporal_lag in seconds (typical peak of HRF at 4-6)

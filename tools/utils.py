@@ -195,14 +195,16 @@ def get_dimensions(config):
     if config['MODEL'] in ['sit','ms-sit'] and (modality =='rfMRI' or modality =='tfMRI' or modality == 'smooth_rfMRI'): 
 
         if config['fMRI']['temporal_rep']=='concat':
-
             T = num_channels
             N = num_patches * config['fMRI']['nbr_frames']
+            V = num_vertices
+        elif config['fMRI']['temporal_rep']=='channels':
+            T = num_channels * config['fMRI']['nbr_frames']
+            N = num_patches 
             V = num_vertices
         else:
             T = num_channels
             N = num_patches
-            
             V = num_vertices
             
 
@@ -369,10 +371,10 @@ def logging_sit(config, pretraining=False):
         folder_to_save_model = folder_to_save_model + '-mask-{}'.format(config['pretraining_smae']['mask_prob'])
     
     if config['SSL'] == 'vsmae':
-        folder_to_save_model = folder_to_save_model + '-mask-{}'.format(config['pretraining_vsmae']['mask_prob'])
-
-    if config['SSL'] == 'vsmae':
-        folder_to_save_model = folder_to_save_model + '-frames-{}'.format(config['fMRI']['nbr_frames'])
+        folder_to_save_model = folder_to_save_model + '-m{}'.format(config['pretraining_vsmae']['mask_prob'])
+        folder_to_save_model = folder_to_save_model + '-f{}'.format(config['fMRI']['nbr_frames'])
+        folder_to_save_model = folder_to_save_model + '-{}'.format(config['pretraining_vsmae']['masking_type'])
+        
     
     folder_to_save_model = folder_to_save_model + '-bs-{}'.format(config['training']['bs'])
 
@@ -706,6 +708,7 @@ def save_reconstruction_mae_fmri(reconstructed_batch_token_masked, #
                             id,
                             server,
                             masking_type = 'tubelet',
+                            temporal_rep = 'concat',
                             ):
 
     try:
@@ -725,9 +728,16 @@ def save_reconstruction_mae_fmri(reconstructed_batch_token_masked, #
     n_not_masked = reconstructed_batch_token_not_masked.shape[2]
 
     ##reintroduce the batch dimension 
+        
+    if temporal_rep == 'concat':
 
-    new_inputs = rearrange(inputs, 'b c (t l) v -> b (t c) l v',b=B, c=1, t=num_frames,l=L)
-    new_inputs = np.transpose(new_inputs.cpu().numpy(),(0,2,1,3))
+        new_inputs = rearrange(inputs, 'b c (t l) v -> b (t c) l v',b=B, c=1, t=num_frames,l=L)
+        new_inputs = np.transpose(new_inputs.cpu().numpy(),(0,2,1,3))
+        
+    elif temporal_rep == 'channels':
+
+        new_inputs = rearrange(inputs, 'b c l v -> b l c v').cpu().numpy()
+    
 
     for i in range(num_patches):
         indices_to_extract = indices[str(i)].values
