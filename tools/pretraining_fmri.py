@@ -17,6 +17,7 @@ from statistics import mode
 import yaml
 import sys
 import shutil
+import glob
 
 #remove warnings
 def warn(*args, **kwargs):
@@ -149,18 +150,46 @@ def train(config):
     print('#'*30)
     print('')
 
-    # creating folders for logging. 
-    if config['MODEL'] == 'sit':
-        folder_to_save_model = logging_sit(config,pretraining=True)
+    if not config['SERVER']:
+
+        # creating folders for logging. 
+        if config['MODEL'] == 'sit':
+            folder_to_save_model = logging_sit(config,pretraining=True)
+        else:
+            raise('not implemented yet')
+        
+        try:
+            os.makedirs(folder_to_save_model,exist_ok=False)
+            print('Creating folder: {}'.format(folder_to_save_model))
+        except OSError:
+            print('folder already exist: {}'.format(folder_to_save_model))
+        
     else:
-        raise('not implemented yet')
-    
-    try:
-        os.makedirs(folder_to_save_model,exist_ok=False)
-        print('Creating folder: {}'.format(folder_to_save_model))
-    except OSError:
-        print('folder already exist: {}'.format(folder_to_save_model))
-    
+        print('not creating a saving folder path')
+        folder_to_save_model = '/'.join(config['CONFIG_PATH'].split('/')[:-1])
+        print(folder_to_save_model)
+
+    #Continue training. Training has been killed ? 
+    pt_files = glob.glob(os.path.join(folder_to_save_model, '*.pt'))
+
+    # Check if the list of files is not empty
+    if pt_files:
+        print("There are .pt files in the folder.")
+        for file in pt_files:
+            print(file)
+        continue_training = True
+
+        ## log restart config file:
+        config['RESTART_TRAINING_ID'] = int(config['RESTART_TRAINING_ID']) + 1
+        with open(os.path.join(folder_to_save_model,'hparams.yml'), 'w') as yaml_file:
+            yaml.dump(config, yaml_file)
+    else:
+        print("There are no .pt files in the folder.")
+        continue_training = False
+
+    # cant' have both restarting training and continue training 
+    #assert( (config['training']['restart'] and not continue_training) or (not config['training']['restart'] and continue_training))
+
     #tensorboard
     if restart:
         #copy the previous tb event
@@ -194,6 +223,8 @@ def train(config):
     print('')
 
     T, N, V, use_bottleneck, bottleneck_dropout = get_dimensions(config)
+    
+    print('Dimensions: {}, {},{}'.format(T,N,V))
 
     if config['MODEL'] == 'sit':
 
@@ -221,6 +252,16 @@ def train(config):
 
     print('Number of parameters encoder: {:,}'.format(sum(p.numel() for p in model.parameters() if p.requires_grad)))
     print('')
+
+    ### Loading weights for SiT Encoder ###
+
+    if continue_training:
+
+        # in that case there will be an encoder ckpt in the folder
+        print('##### Loading BEST checkpoint for SiT encoder model #####')
+        checkpoint = torch.load(os.path.join(folder_to_save_model,'encoder-best.pt'))
+        model.load_state_dict(checkpoint['model_state_dict'],strict=True) 
+        print('Loaded the SiT encoder model successfully')
 
     ##################################################
     #######     SELF-SUPERVISION PIPELINE      #######
@@ -299,9 +340,12 @@ def train(config):
                     sampling=sampling,
                     sub_ico=ico_grid,
                     masking_type=config['pretraining_vsmae']['masking_type'],
+                    temporal_rep = config['fMRI']['temporal_rep'],
                     nbr_frames = config['fMRI']['nbr_frames'],
                     loss=config['pretraining_vsmae']['loss'],
                     mask_loss=config['pretraining_vsmae']['mask_loss'])
+        print('Masking type: {}'.format(config['pretraining_vsmae']['masking_type']))  
+
     else:
         raise('not implemented yet')  
     
@@ -310,8 +354,7 @@ def train(config):
     print('Number of parameters pretraining pipeline : {:,}'.format(sum(p.numel() for p in ssl.parameters() if p.requires_grad)))
     print('')
 
-    if config['training']['restart']:
-
+    if config['training']['restart'] and (not continue_training):
 
         if os.path.exists(os.path.join(config['training']['path_from_ckpt'],'encoder-decoder-final.pt')):
             print('##### Loading FINAL checkpoint #####')
@@ -324,9 +367,14 @@ def train(config):
         iter_count = checkpoint['epoch']
         running_loss = checkpoint['loss'] * (iter_count-1)
         print('Starting training from iteration  {}'.format(iter_count))
-    else:
-        iter_count= 0
-        running_loss = 0 
+
+    elif continue_training:
+
+        print('##### Loading BEST checkpoint for encoder-decoder  model #####')
+        checkpoint = torch.load(os.path.join(folder_to_save_model,'encoder-decoder-best.pt'))
+        ssl.load_state_dict(checkpoint['model_state_dict'],strict=True) 
+
+    else: 
         print('Training from scratch')
 
     #####################################
@@ -351,11 +399,24 @@ def train(config):
     else:
         raise('not implemented yet')
     
-    if config['training']['restart']:
+    if config['training']['restart'] and (not continue_training):
         print('')
         print('#### LOADING OPTIMIZER STATE ####')
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         print('Loading successfully')
+
+    elif continue_training:
+        print('')
+        print('#### LOADING OPTIMIZER STATE ####')
+        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        print('Loading successfully')
+        iter_count = checkpoint['epoch']
+        running_loss = checkpoint['loss'] * (iter_count-1)
+        print('Starting training from iteration  {}'.format(iter_count))
+    else:
+        iter_count= 0
+        running_loss = 0 
+        print('Training from scratch')
     
     ###################################
     #######     SCHEDULING      #######
@@ -425,18 +486,21 @@ def train(config):
 
             if (iter_count+1)%log_training_it==0:
 
-                loss_pretrain_it = running_loss / (iter_count+1)
+                #loss_pretrain_it = running_loss / (iter_count+1) #before 26.02.2024
+                loss_pretrain_it = mpp_loss.item()
 
                 log_pretrain(config, optimizer, scheduler, iter_count+1, loss_pretrain_it)
 
-                save_reconstruction_pretrain_fmri(config,
-                                                reconstructed_batch_token_masked[:1],
-                                                reconstructed_batch_token_not_masked[:1],
-                                                inputs[:1],
-                                                ids_tokens_masked[:1],
-                                                ids_tokens_not_masked[:1],
-                                                iter_count+1,
-                                                folder_to_save_model,)
+                if (iter_count+1)%1000==0:
+
+                    save_reconstruction_pretrain_fmri(config,
+                                                    reconstructed_batch_token_masked[:1],
+                                                    reconstructed_batch_token_not_masked[:1],
+                                                    inputs[:1],
+                                                    ids_tokens_masked[:1],
+                                                    ids_tokens_not_masked[:1],
+                                                    iter_count+1,
+                                                    folder_to_save_model,)
 
             ##############################
             ######    VALIDATION    ######
@@ -481,16 +545,18 @@ def train(config):
 
                                 mpp_loss, reconstructed_batch, reconstructed_batch_unmasked, masked_indices, unmasked_indices = ssl(inputs)
 
-                                save_reconstruction_pretrain_fmri_valset(config,
-                                                            reconstructed_batch,
-                                                            reconstructed_batch_unmasked,
-                                                            inputs,
-                                                            masked_indices, 
-                                                            unmasked_indices,
-                                                            iter_count+1,
-                                                            folder_to_save_model,
-                                                            id=i,
-                                                            )
+                                if (iter_count+1)%1000==0:
+
+                                    save_reconstruction_pretrain_fmri_valset(config,
+                                                                reconstructed_batch,
+                                                                reconstructed_batch_unmasked,
+                                                                inputs,
+                                                                masked_indices, 
+                                                                unmasked_indices,
+                                                                iter_count+1,
+                                                                folder_to_save_model,
+                                                                id=i,
+                                                                )
                     
 
                     config = saving_ckpt_pretrain(config,
@@ -575,6 +641,8 @@ if __name__ == '__main__':
 
     with open(args.config) as f:
         config = yaml.safe_load(f)
+    
+    config['CONFIG_PATH'] = args.config
 
     # Call training
     train(config)

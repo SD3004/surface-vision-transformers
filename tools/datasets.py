@@ -1093,7 +1093,14 @@ class dataset_cortical_surfaces_tfmri(Dataset):
 
         elif self.temporal_rep == 'tubelet':
 
-            print('sequence: {}'.format(sequence.shape))
+            #print('sequence: {}'.format(sequence.shape))
+            return sequence
+            
+        elif self.temporal_rep == 'channels':
+
+            #print('sequence: {}'.format(sequence.shape))
+            #import pdb;pdb.set_trace()
+            return sequence
 
         else:
             raise('Not implemented yet')

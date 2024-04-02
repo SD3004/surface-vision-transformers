@@ -267,7 +267,8 @@ def save_reconstruction_pretrain_fmri(config,
                                     path_to_workdir=config['data']['path_to_workdir'],
                                     id='0',
                                     server = config['SERVER'],
-                                    masking_type = config['pretraining_vsmae']['masking_type']
+                                    masking_type = config['pretraining_vsmae']['masking_type'],
+                                    temporal_rep = config['fMRI']['temporal_rep'],
                                     )
 
 
@@ -305,7 +306,8 @@ def save_reconstruction_pretrain_fmri_valset(config,
                                     path_to_workdir=config['data']['path_to_workdir'],
                                     id=id,
                                     server = config['SERVER'],
-                                    masking_type = config['pretraining_vsmae']['masking_type']
+                                    masking_type = config['pretraining_vsmae']['masking_type'],
+                                    temporal_rep = config['fMRI']['temporal_rep'],
                                     )
 
 
