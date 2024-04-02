@@ -123,7 +123,7 @@ pretraining_mae:
   save_reconstruction: True
 
 pretraining_smae:
-  mask_prob: 0.50
+  mask_prob: 0.75
   decoder_dim: 192
   decoder_depth: 3 
   decoder_heads: 3
@@ -134,10 +134,10 @@ pretraining_smae:
   no_class_emb_decoder: False
 
 pretraining_vsmae:
-  mask_prob: 0.75
-  decoder_dim: 192 
+  mask_prob: 0.90
+  decoder_dim: 192 #192,384,768
   decoder_depth: 3 
-  decoder_heads: 3
+  decoder_heads: 3 #3,6,12
   decoder_dim_head: 64
   loss: mse #mse, l1
   init_weights: False #False
@@ -187,8 +187,8 @@ CosineDecay:
 
 fMRI:
   sampling_type: random #False, random, uniform, chunk
-  nbr_frames: 3 #4
-  window: 3 #8
+  nbr_frames: 8 #4
+  window: 8 #8
   average: False # True, False
   temporal_rep : channels #concat, avg, mix, channels,
   temporal_lag: 6 # equivalent to starting sampling at t0+temporal_lag in seconds (typical peak of HRF at 4-6)

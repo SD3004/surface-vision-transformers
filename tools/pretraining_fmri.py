@@ -344,8 +344,8 @@ def train(config):
                     nbr_frames = config['fMRI']['nbr_frames'],
                     loss=config['pretraining_vsmae']['loss'],
                     mask_loss=config['pretraining_vsmae']['mask_loss'])
+        
         print('Masking type: {}'.format(config['pretraining_vsmae']['masking_type']))  
-
     else:
         raise('not implemented yet')  
     
@@ -459,7 +459,7 @@ def train(config):
                 inputs = rearrange(inputs, 'b t c n v -> (b t) c n v') 
             else:
                 B,t,n,v = inputs.shape
-
+                
             if use_confounds:
 
                 confounds = labels[:,1]
@@ -471,10 +471,12 @@ def train(config):
                 elif config['SSL'] == 'mpp':
                     mpp_loss, _ = ssl(inputs)
 
+
             mpp_loss.backward()
             optimizer.step()
 
             running_loss += mpp_loss.item()
+            #import pdb;pdb.set_trace()
 
             #tensorboard log train
             scheduler, writer = tensorboard_log_pretrain_trainset(config, writer, scheduler, optimizer, mpp_loss.item(),iter_count+1)

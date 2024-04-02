@@ -402,7 +402,10 @@ class vsMAE(nn.Module):
     
 
     
-    def save_reconstruction(self,pred_tokens_not_masked, pred_tokens_masked, ids_tokens_not_masked,ids_tokens_masked ):
+    def save_reconstruction(self,pred_tokens_not_masked,
+                             pred_tokens_masked,
+                               ids_tokens_not_masked,
+                               ids_tokens_masked ):
 
         #### ADDED #### Mask the patches with the cut
         mask_cortex = torch.Tensor(self.mask_cortex)

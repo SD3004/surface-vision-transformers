@@ -195,7 +195,6 @@ def get_dimensions(config):
     if config['MODEL'] in ['sit','ms-sit'] and (modality =='rfMRI' or modality =='tfMRI' or modality == 'smooth_rfMRI'): 
 
         if config['fMRI']['temporal_rep']=='concat':
-
             T = num_channels
             N = num_patches * config['fMRI']['nbr_frames']
             V = num_vertices
@@ -206,7 +205,6 @@ def get_dimensions(config):
         else:
             T = num_channels
             N = num_patches
-            
             V = num_vertices
             
 

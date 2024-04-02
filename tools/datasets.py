@@ -1470,8 +1470,11 @@ class dataset_cortical_surfaces_rfmri(Dataset):
 
         id = np.random.randint(0,100)
         img = lat_lon_img_metrics('{}/surfaces/'.format(self.path_to_workdir),torch.Tensor(data.T).to('cpu'),device='cpu')
+
         warped_grid = nb.load('{}/warps/resample_ico6_ico_{}/ico_{}_{}.surf.gii'.format(self.path_to_template,self.warps_ico,self.warps_ico, id)).agg_data()
+
         warped_moving_img = bilinear_sphere_resample(torch.Tensor(warped_grid[0]), img, 100, 'cpu')
+        
         return warped_moving_img.numpy().T
     
     ############ LOGGING ############
