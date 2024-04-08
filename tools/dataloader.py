@@ -13,6 +13,9 @@ from tools.samplers import new_sampler_HCP_fluid_intelligence,sampler_preterm_bi
 
 import torch
 
+from torch.utils.data.distributed import DistributedSampler
+
+
 ##### METRICS DATALOADER ########
 
 def loader_metrics(data_path,
@@ -329,6 +332,8 @@ def loader_metrics_segmentation(data_path,
     
 def loader_tfmri(data_path,
                 config,
+                world_size=1,
+                rank=0,
                 split_cv=-1):
 
     ###############################################################
@@ -354,12 +359,27 @@ def loader_tfmri(data_path,
         batch_size_training = config['training']['bs']//config['fMRI']['nbr_clip_sampled_fmri']
         print('batch size training: {}'.format(batch_size_training))
 
-        train_loader = torch.utils.data.DataLoader(train_dataset,
-                                                    batch_size = batch_size_training,
-                                                    shuffle=(not config['RECONSTRUCTION']),
-                                                    num_workers=18,
-                                                    pin_memory=True)
-    
+        if config['distributed_training']:
+            print('Setting up DistributedSampler: {}, {}'.format(world_size, rank))
+            sampler_distributed = DistributedSampler(
+                                            train_dataset,
+                                            num_replicas = world_size,
+                                            rank=rank,
+                                                )
+            train_loader = torch.utils.data.DataLoader(train_dataset,
+                                                            batch_size = config['training']['bs'],
+                                                            shuffle=False,
+                                                            sampler=sampler_distributed,
+                                                            num_workers=config['training']['num_workers'],
+                                                            pin_memory=True)
+        else:
+
+            train_loader = torch.utils.data.DataLoader(train_dataset,
+                                                        batch_size = batch_size_training,
+                                                        shuffle=(not config['RECONSTRUCTION']),
+                                                        num_workers=18,
+                                                        pin_memory=True)
+        
 
     ###############################################################
     ####################    VALIDATION DATA    ####################
@@ -372,12 +392,26 @@ def loader_tfmri(data_path,
                                                     config=config,
                                                     split='val',
                                                     split_cv=split_cv)
+        
+        if config['distributed_training']:
+            val_sampler_distributed = DistributedSampler(
+                                            val_dataset,
+                                            num_replicas = world_size,
+                                            rank=rank,
+                                                )
+            val_loader = torch.utils.data.DataLoader(val_dataset,
+                                                            batch_size = config['training']['bs_val'],
+                                                            shuffle=False,
+                                                            sampler=val_sampler_distributed,
+                                                            num_workers=config['training']['num_workers'])
+        
+        else:
 
-        val_loader = torch.utils.data.DataLoader(val_dataset,
-                                                batch_size=config['training']['bs_val'],
-                                                shuffle=False,
-                                                num_workers=32)
-                
+            val_loader = torch.utils.data.DataLoader(val_dataset,
+                                                    batch_size=config['training']['bs_val'],
+                                                    shuffle=False,
+                                                    num_workers=32)
+                    
     print('')
     print('#'*30)
     print('############ Data ############')
@@ -387,8 +421,11 @@ def loader_tfmri(data_path,
     print('')
     print('Training data: {}'.format(len(train_dataset)))
     print('Validation data: {}'.format(len(val_dataset)))
-        
-    return train_loader, val_loader
+
+    if config['distributed_training']:
+        return train_loader, val_loader, sampler_distributed, val_sampler_distributed
+    else:
+        return train_loader, val_loader
 
 def loader_rfmri(data_path,
                 config,
