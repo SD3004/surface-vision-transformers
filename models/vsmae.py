@@ -177,7 +177,6 @@ class vsMAE(nn.Module):
                 ids_tokens_not_masked = ids_shuffle[:, :len_to_keep]
                 ids_tokens_masked = ids_shuffle[:,len_to_keep:]
             
-                
                 x_not_masked_unshaped = torch.gather(x, dim=1, index=ids_tokens_not_masked.unsqueeze(-1).repeat(1 ,1, V))
                 x_not_masked = x_not_masked_unshaped
                 #import pdb;pdb.set_trace()            
