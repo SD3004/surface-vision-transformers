@@ -142,6 +142,31 @@ def get_dataloaders(config,
         return train_loader
     else:
         raise('not implemented yet')
+    
+def get_dataloaders_distributed(config, 
+                                data_path,
+                                world_size,
+                                rank):
+
+    dataloader = config['data']['dataloader']
+    sampler = config['training']['sampler']
+    modality = config['data']['modality']
+    runtime = config['training']['runtime']
+
+    if str(dataloader)=='metrics':
+        if str(modality) == 'cortical_metrics' or str(modality) == 'memory_task':
+            train_loader, val_loader, test_loader = loader_metrics(data_path,sampler,config)
+            return train_loader, val_loader, test_loader
+    elif str(dataloader)=='bold' or str(dataloader)=='fmri':
+        print('loading functional data')
+        if modality == 'tfMRI':
+            train_loader, val_loader, train_sampler, val_sampler = loader_tfmri(data_path,config,world_size,rank)
+        elif (modality == 'rfMRI') or (modality == 'smooth_rfMRI'):
+            train_loader = loader_rfmri(data_path,config)
+        return train_loader, val_loader, train_sampler, val_sampler
+    else:
+        raise('not implemented yet')
+    
 
 
 

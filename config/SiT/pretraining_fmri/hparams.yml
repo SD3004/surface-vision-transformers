@@ -7,6 +7,7 @@ MODEL: sit
 RECONSTRUCTION: False
 SSL: vsmae #mae, smae, vsmae
 SERVER: False
+distributed_training: True 
 
 ##################################  DATA & TASK  ##################################
 
@@ -86,7 +87,7 @@ transformer:
 
 training:
   LR: 0.0003
-  bs: 64
+  bs: 32
   bs_val: 1
   iterations: 50000
   log_training_it: 10 #default 5, fMRI 1
@@ -102,6 +103,7 @@ training:
   sampler: False
   early_stopping: 300
   runtime: False
+  num_workers: 16
   
 pretraining_mpp:
   mask_prob: 0.75 #0.5
