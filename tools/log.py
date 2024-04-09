@@ -313,7 +313,7 @@ def save_reconstruction_pretrain_fmri_valset(config,
 
 
 def saving_ckpt_pretrain(config, iter_count, best_loss_it, best_loss_val,folder_to_save_model,
-                               model, ssl, optimizer):
+                               ssl, optimizer):
     
     config['results'] = {}
     config['results']['best_iter'] = iter_count
@@ -325,11 +325,19 @@ def saving_ckpt_pretrain(config, iter_count, best_loss_it, best_loss_val,folder_
 
 
     torch.save({ 'epoch':iter_count,
-                'model_state_dict': model.state_dict(),
+                'model_state_dict': ssl.encoder.state_dict(),
                 'optimizer_state_dict': optimizer.state_dict(),
                 'loss':best_loss_it,
                 },
                 os.path.join(folder_to_save_model, 'encoder-best.pt'))
+
+    torch.save({ 'epoch':iter_count,
+                'model_state_dict': ssl.decoder.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+                'loss':best_loss_it,
+                },
+                os.path.join(folder_to_save_model, 'decoder-best.pt'))
+    
     torch.save({ 'epoch':iter_count,
                 'model_state_dict': ssl.state_dict(),
                 'optimizer_state_dict': optimizer.state_dict(),
@@ -339,5 +347,7 @@ def saving_ckpt_pretrain(config, iter_count, best_loss_it, best_loss_val,folder_
 
         
     return config
+
+
 
 

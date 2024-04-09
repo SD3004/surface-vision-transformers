@@ -89,7 +89,7 @@ transformer:
 
 training:
   LR: 0.0003
-  bs: 16
+  bs: 16 #640 takes 22G for 3 channel SiT tiny ico2 
   bs_val: 1
   iterations: 50000
   log_training_it: 100 #default 5, fMRI 1

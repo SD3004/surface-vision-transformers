@@ -613,11 +613,18 @@ def train(config):
     print('Saving final checkpoint...')
 
     torch.save({'epoch':iter_count+1,
-                'model_state_dict': model.state_dict(),
+                'model_state_dict': ssl.encoder.state_dict(),
                 'optimizer_state_dict': optimizer.state_dict(),
                 'loss':loss_pretrain_it,
                 },
                 os.path.join(folder_to_save_model,'encoder-final.pt'))
+
+    torch.save({'epoch':iter_count+1,
+                'model_state_dict': ssl.decoder.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+                'loss':loss_pretrain_it,
+                },
+                os.path.join(folder_to_save_model,'decoder-final.pt'))
 
     torch.save({'epoch':iter_count+1,
                 'model_state_dict': ssl.state_dict(),

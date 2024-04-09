@@ -17,6 +17,7 @@ from statistics import mode
 import yaml
 import sys
 import shutil
+import glob
 
 #remove warnings
 def warn(*args, **kwargs):
@@ -29,7 +30,7 @@ sys.path.append('../')
 sys.path.append('../../')
 sys.path.append('./')
 sys.path.append('../models/')
-sys.path.append('./workspace/fMRI_transformers/')
+sys.path.append('/nfs/home/sdahan/workspace/sMAE/')
 from tools.utils import logging_sit, get_data_path, get_dataloaders_distributed, get_dimensions, get_scheduler
 
 
@@ -175,18 +176,42 @@ def train(config):
         print('#'*30)
         print('')
 
-    # creating folders for logging. 
-    if config['MODEL'] == 'sit':
-        folder_to_save_model = logging_sit(config,pretraining=True)
+    if not config['SERVER']:
+
+        # creating folders for logging. 
+        if config['MODEL'] == 'sit':
+            folder_to_save_model = logging_sit(config,pretraining=True)
+        else:
+            raise('not implemented yet')
+        
+        try:
+            os.makedirs(folder_to_save_model,exist_ok=False)
+            print('Creating folder: {}'.format(folder_to_save_model))
+        except OSError:
+            print('folder already exist: {}'.format(folder_to_save_model))
+        
     else:
-        raise('not implemented yet')
-    
-    try:
-        os.makedirs(folder_to_save_model,exist_ok=False)
-        print('Creating folder: {}'.format(folder_to_save_model))
-    except OSError:
-        print('folder already exist: {}'.format(folder_to_save_model))
-    
+        print('not creating a saving folder path')
+        folder_to_save_model = '/'.join(config['CONFIG_PATH'].split('/')[:-1])
+        print(folder_to_save_model)
+
+    #Continue training. Training has been killed ? 
+    pt_files = glob.glob(os.path.join(folder_to_save_model, '*.pt'))
+
+    # Check if the list of files is not empty
+    if pt_files:
+        print("There are .pt files in the folder.")
+        for file in pt_files:
+            print(file)
+        continue_training = True
+
+        ## log restart config file:
+        config['RESTART_TRAINING_ID'] = int(config['RESTART_TRAINING_ID']) + 1
+        with open(os.path.join(folder_to_save_model,'hparams.yml'), 'w') as yaml_file:
+            yaml.dump(config, yaml_file)
+    else:
+        print("There are no .pt files in the folder.")
+        continue_training = False    
     #tensorboard
     if restart:
         #copy the previous tb event
@@ -253,6 +278,16 @@ def train(config):
     if rank ==0:
         print('Number of parameters encoder: {:,}'.format(sum(p.numel() for p in model.parameters() if p.requires_grad)))
         print('')
+
+    ### Loading weights for SiT Encoder ###
+
+    if continue_training:
+
+        # in that case there will be an encoder ckpt in the folder
+        print('##### Loading BEST checkpoint for SiT encoder model #####')
+        checkpoint = torch.load(os.path.join(folder_to_save_model,'encoder-best.pt'))
+        model.load_state_dict(checkpoint['model_state_dict'],strict=True) 
+        print('Loaded the SiT encoder model successfully')
 
     ##################################################
     #######     SELF-SUPERVISION PIPELINE      #######
@@ -567,8 +602,7 @@ def train(config):
                                                     running_loss_gpu_it,
                                                     loss_pretrain_val_epoch,
                                                     folder_to_save_model,
-                                                    model,
-                                                    ssl,
+                                                    ssl.module,
                                                     optimizer)
             
                         
@@ -603,7 +637,7 @@ def train(config):
     else:
         config['results']['training_finished'] = True 
 
-    config['results']['final_loss'] = loss_pretrain_it
+    config['results']['final_loss'] = running_loss_gpu_it
 
     with open(os.path.join(folder_to_save_model,'hparams.yml'), 'w') as yaml_file:
         yaml.dump(config, yaml_file)
@@ -618,11 +652,18 @@ def train(config):
         print('Saving final checkpoint...')
 
         torch.save({'epoch':iter_count+1,
-                    'model_state_dict': model.state_dict(),
+                    'model_state_dict': ssl.module.encoder.state_dict(),
                     'optimizer_state_dict': optimizer.state_dict(),
                     'loss':running_loss_gpu_it,
                     },
                     os.path.join(folder_to_save_model,'encoder-final.pt'))
+        
+        torch.save({'epoch':iter_count+1,
+                    'model_state_dict': ssl.module.decoder.state_dict(),
+                    'optimizer_state_dict': optimizer.state_dict(),
+                    'loss':running_loss_gpu_it,
+                    },
+                    os.path.join(folder_to_save_model,'decoder-final.pt'))
 
         torch.save({'epoch':iter_count+1,
                     'model_state_dict': ssl.state_dict(),
@@ -648,6 +689,8 @@ if __name__ == '__main__':
 
     with open(args.config) as f:
         config = yaml.safe_load(f)
+    
+    config['CONFIG_PATH'] = args.config
 
     # Call training
     train(config)
