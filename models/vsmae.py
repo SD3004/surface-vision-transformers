@@ -30,9 +30,10 @@ class vsMAE(nn.Module):
         dataset = 'dHCP',
         configuration = 'template',
         num_channels =1, 
-        weights_init = False,
+        layers_weights_init = False,
         use_class_token_dec = False,
         no_pos_emb_class_token_decoder = True, 
+        use_class_token_decoder = True, 
         mask = True,  
         path_to_template = '',
         path_to_workdir = '',
@@ -52,9 +53,9 @@ class vsMAE(nn.Module):
         # extract some hyperparameters and functions from encoder (vision transformer to be trained)
         self.encoder = encoder
         self.num_patches_encoder, encoder_dim = encoder.num_patches, encoder.encoding_dim
-        self.to_patch, self.patch_to_emb = encoder.to_patch_embedding[:2]
-        pixel_values_per_patch = self.patch_to_emb.weight.shape[-1] # channels*num_vertices
-        self.norm = encoder.mlp_head[0]
+        #self.to_patch, self.patch_to_emb = encoder.to_patch_embedding[:2]
+        pixel_values_per_patch = self.encoder.to_patch_embedding[1].weight.shape[-1] # channels*num_vertices
+        #self.norm = encoder.mlp_head[0]
 
         self.dataset = dataset
         self.temporal_rep = temporal_rep
@@ -72,6 +73,7 @@ class vsMAE(nn.Module):
         self.nbr_frames = nbr_frames
         self.loss = loss
         self.mask_loss = mask_loss
+        self.use_class_token_decoder = use_class_token_decoder
         
 
         print('loss: {}'.format(self.loss))
@@ -84,6 +86,9 @@ class vsMAE(nn.Module):
                                     heads = decoder_heads, 
                                     dim_head = decoder_dim_head, 
                                     mlp_dim = decoder_dim * 4)
+        
+        self.cls_token_decoder = nn.Parameter(torch.zeros(1, 1, decoder_dim)) if use_class_token_decoder else None
+
 
         self.decoder_pos_emb = nn.Parameter(torch.zeros(1, self.num_patches_encoder, decoder_dim) * .02, requires_grad=False) if no_pos_emb_class_token_decoder \
                 else nn.Parameter(torch.zeros(1, self.num_patches_encoder+1, decoder_dim), requires_grad=False)
@@ -93,7 +98,7 @@ class vsMAE(nn.Module):
         self.decoder_norm = nn.LayerNorm(decoder_dim)
 
 
-        if weights_init:
+        if layers_weights_init:
             self.mask_token = nn.Parameter(torch.zeros(decoder_dim))
             self.init_weights()
         else:
@@ -221,6 +226,8 @@ class vsMAE(nn.Module):
         latent, mask_binary, ids_restore, ids_tokens_not_masked, ids_tokens_masked = self.forward_encoder(imgs,confounds)
         #import pdb;pdb.set_trace()
         pred = self.forward_decoder(latent, ids_restore, self.masking_type)  # [N, L, p*p*3] # [N,L,v*C]
+        if self.use_class_token_decoder:
+            pred = pred[:, 1:, :] #remove the classification token
         #import pdb;pdb.set_trace()
         loss = self.forward_loss(imgs, pred, mask_binary)
         #import pdb;pdb.set_trace()
@@ -248,11 +255,7 @@ class vsMAE(nn.Module):
         pred_tokens_not_masked  = pred_tokens_not_masked.detach()
         pred_tokens_masked = pred_tokens_masked.detach()
         
-        #import pdb;pdb.set_trace()
-
         prediction_pixels_masked_, prediction_pixels_not_masked_ = self.save_reconstruction(pred_tokens_not_masked, pred_tokens_masked, ids_tokens_not_masked, ids_tokens_masked)
-
-        #import pdb;pdb.set_trace()
 
         return loss, prediction_pixels_masked_, prediction_pixels_not_masked_, ids_tokens_masked, ids_tokens_not_masked
 
@@ -260,68 +263,60 @@ class vsMAE(nn.Module):
         device = img.device
 
         # get patches
-        patches = self.to_patch(img) ##ok 
+        patches = self.encoder.to_patch_embedding[0](img) ##ok 
         batch, num_patches, *_ = patches.shape
 
         assert (num_patches == self.num_patches_encoder)
 
         # patch to encoder tokens and add positions
-        #import pdb;pdb.set_trace()
-        x = self.patch_to_emb(patches)
-        #import pdb;pdb.set_trace()
+        x = self.encoder.to_patch_embedding[1](patches)
         
         if self.encoder.no_class_token_emb:
             x = x + self.encoder.pos_embedding[:,:num_patches,:]  #can be set to fixed in the encoder 
         else:
             x = x + self.encoder.pos_embedding[:,self.encoder.num_prefix_tokens:(num_patches+self.encoder.num_prefix_tokens),:] #use use class toekn: 1-> n+1 else, 0->n
         
-        #import pdb;pdb.set_trace()
         # masking: length -> length * mask_ratio
         x, mask_binary, ids_restore, ids_tokens_not_masked, ids_tokens_masked = self.random_masking(x, self.masking_ratio,self.masking_type)
-        #import pdb;pdb.set_trace()
         # append cls token
         if self.encoder.use_class_token:
             cls_token = self.encoder.cls_token if self.encoder.no_class_token_emb else self.encoder.cls_token + self.encoder.pos_embedding[:, :self.encoder.num_prefix_tokens, :] 
             cls_tokens = cls_token.expand(x.shape[0], -1, -1)
             x = torch.cat((cls_tokens, x), dim=1)
-
+            
         if self.use_confounds and (confounds is not None):
             confounds = self.encoder.proj_confound(confounds.view(-1,1))
             confounds = repeat(confounds, 'b d -> b n d', n=num_patches+1) if (not self.encoder.no_class_token_emb) else repeat(confounds, 'b d -> b n d', n=num_patches)
             x += confounds
         
-        #import pdb;pdb.set_trace()
         # attend with vision transformer
         x = self.encoder.transformer(x)
         
-        x = self.norm(x)
-        
-        #import pdb;pdb.set_trace()
-        
+        x = self.encoder.mlp_head[0](x)
+                
         return x, mask_binary, ids_restore, ids_tokens_not_masked, ids_tokens_masked
     
     def forward_decoder(self, x, ids_restore, masking_type):
+
         # embed tokens
         x = self.enc_to_dec(x)
+
+        if self.encoder.use_class_token:
+            x = x[:, 1:, :]  # remove class token
 
         if masking_type == 'tubelet':
             
             if self.temporal_rep == 'concat':
 
-                B, n_unmasked, V = x.shape 
+                B, n_unmasked, V = x.shape
                 L = n_unmasked // self.nbr_frames 
-                #import pdb;pdb.set_trace()
                 x_unshaped = rearrange(x, 'b (t l) v -> b t l v', b=B, t=self.nbr_frames,l=L,v=V)
-                #import pdb;pdb.set_trace()
                 # append mask tokens to sequence
                 mask_tokens = self.mask_token.repeat(x_unshaped.shape[0], self.nbr_frames, ids_restore.shape[1] - L, 1) ## I have removed the +1
-                #import pdb;pdb.set_trace()
-                x_ = torch.cat([x_unshaped, mask_tokens], dim=2) if (not self.encoder.use_class_token) else torch.cat([x[:,:, 1:, :], mask_tokens], dim=2) # no cls token
-                #import pdb;pdb.set_trace()
+                #x_ = torch.cat([x_unshaped, mask_tokens], dim=2) if (not self.encoder.use_class_token) else torch.cat([x[:,:, 1:, :], mask_tokens], dim=2) # no cls token
+                x_ = torch.cat([x_unshaped, mask_tokens], dim=2) ## I am removing the classification token before anyway
                 x_ = torch.gather(x_, dim=2, index=ids_restore.unsqueeze(-1).unsqueeze(1).repeat(1,self.nbr_frames ,1, V))  # unshuffle
-                #import pdb;pdb.set_trace()
                 x_dec = rearrange(x_, 'b t l v -> b (t l) v')
-                #import pdb;pdb.set_trace()
             
             elif self.temporal_rep == 'channels':
                 
@@ -329,32 +324,31 @@ class vsMAE(nn.Module):
                 L = n_unmasked                
                 # append mask tokens to sequence
                 mask_tokens = self.mask_token.repeat(x.shape[0], ids_restore.shape[1] - L, 1) ## I have removed the +1
-                #import pdb;pdb.set_trace()
                 x_ = torch.cat([x, mask_tokens], dim=1) if (not self.encoder.use_class_token) else torch.cat([x[:, 1:, :], mask_tokens], dim=1) # no cls token
-                #import pdb;pdb.set_trace()
                 x_ = torch.gather(x_, dim=1, index=ids_restore.unsqueeze(-1).repeat(1, 1, V))  # unshuffle
-                #import pdb;pdb.set_trace()
                 x_dec = x_
-                #import pdb;pdb.set_trace()
         
         elif masking_type == 'random':
             B, n_unmasked, V = x.shape 
-            #import pdb;pdb.set_trace()
             # append mask tokens to sequence
             mask_tokens = self.mask_token.repeat(x.shape[0], ids_restore.shape[1] - n_unmasked, 1) ## I have removed the +1
-            #import pdb;pdb.set_trace()
             x_ = torch.cat([x, mask_tokens], dim=1) if (not self.encoder.use_class_token) else torch.cat([x[:, 1:, :], mask_tokens], dim=1) # no cls token
-            #import pdb;pdb.set_trace()
             x_dec = torch.gather(x_, dim=1, index=ids_restore.unsqueeze(-1).repeat(1 ,1, V))  # unshuffle
-            #import pdb;pdb.set_trace()
 
 
-
-        # add pos embed and classification token ### FOR NOW, NOT USING CLASSIFICATION TOKEN AT ALL!! 
+        # add pos embed and classification token 
         if self.no_pos_emb_class_token_decoder:
+            #import pdb;pdb.set_trace()
             x_dec = x_dec + self.decoder_pos_emb
             #x_dec = torch.cat([x[:, :1, :], x_dec], dim=1)  # append cls token
+            ##### HERE I COULD ADD THE CLASS TOKEN FROM THE ENCODER POTENTIALLY
+            if self.use_class_token_decoder:
+                #import pdb;pdb.set_trace()
+                cls_tokens_decoder = repeat(self.cls_token_decoder, '1 1 d -> b 1 d', b =B)
+                x_dec = torch.cat((cls_tokens_decoder, x_dec), dim=1)      
+                #import pdb;pdb.set_trace()
         else:
+            raise NotImplementedError('Not implemented yet')
             #x_dec = torch.cat([x[:, :1, :], x_dec], dim=1)  # append cls token
             x_dec = x_dec + self.decoder_pos_emb    
         #import pdb;pdb.set_trace()        
@@ -381,7 +375,6 @@ class vsMAE(nn.Module):
             target = imgs.squeeze(1)
         else:
             target = imgs.squeeze()
-        
         
         if self.temporal_rep == 'channels':
             target = rearrange(target,'b c n v  -> b n (v c)')

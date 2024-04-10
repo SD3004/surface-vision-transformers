@@ -46,10 +46,10 @@ class SiT(nn.Module):
                         use_pe = True,
                         use_confounds = False,
                         use_bottleneck= False, 
-                        weights_init = False, 
+                        weights_layers_init = False, 
                         use_class_token = True,
                         trainable_pos_emb = True, 
-                        no_class_token_emb = False, 
+                        no_class_token_emb = True, 
                         ):
 
         super().__init__()
@@ -58,21 +58,23 @@ class SiT(nn.Module):
 
         patch_dim = num_channels * num_vertices
 
-        # inputs has size = b * c * n * v
-        self.to_patch_embedding = nn.Sequential(
-            Rearrange('b c n v  -> b n (v c)'),
-            nn.Linear(patch_dim, dim),
-        )
+    
 
         if use_bottleneck:
             print('using bottleneck')
             self.to_patch_embedding = nn.Sequential(
-            Rearrange('b c n v  -> b n (v c)'),
-            nn.Dropout(bottleneck_dropout),
-            nn.Linear(patch_dim,1024),
-            nn.Dropout(bottleneck_dropout),
-            nn.Linear(1024, dim),
-        )
+                    Rearrange('b c n v  -> b n (v c)'),
+                    nn.Dropout(bottleneck_dropout),
+                    nn.Linear(patch_dim,1024),
+                    nn.Dropout(bottleneck_dropout),
+                    nn.Linear(1024, dim),
+                )
+        else:
+            # inputs has size = b * c * n * v
+            self.to_patch_embedding = nn.Sequential(
+                    Rearrange('b c n v  -> b n (v c)'),
+                    nn.Linear(patch_dim, dim),
+                )
 
         if use_confounds:
             self.proj_confound = nn.Sequential(
@@ -89,7 +91,12 @@ class SiT(nn.Module):
         self.no_class_token_emb = no_class_token_emb
         self.num_prefix_tokens = 1 if use_class_token else 0
 
-        self.transformer = Transformer(dim, depth, heads, dim_head, mlp_ratio*dim, dropout)
+        self.transformer = Transformer(dim, 
+                                       depth,
+                                        heads,
+                                        dim_head, 
+                                        mlp_ratio*dim, 
+                                        dropout)
 
         self.pool = pool
         self.to_latent = nn.Identity()
@@ -107,12 +114,12 @@ class SiT(nn.Module):
             print('Using Sin-Cos positional embeddings')
             self.pos_embedding = nn.Parameter(torch.zeros(1, num_patches, dim) * .02, requires_grad=False) if no_class_token_emb \
                 else nn.Parameter(torch.zeros(1, num_patches+self.num_prefix_tokens, dim), requires_grad=False)
-            print(self.pos_embedding.shape)
+            #print(self.pos_embedding.shape)
             self._init_pos_em()
         ####
         
         ### weight init
-        if weights_init: # apply the same weight init as timm's github
+        if weights_layers_init: # apply the same weight init as timm's github
             print('Using initialisation from Timms repo')
             self.cls_token = nn.Parameter(torch.zeros(1, 1, dim)) if use_class_token else None
             self._init_weights_class()
@@ -174,7 +181,6 @@ class SiT(nn.Module):
         x = self.dropout(x)
 
         x = self.transformer(x)
-
 
         x = x.mean(dim = 1) if self.pool == 'mean' else x[:, 0]
 
