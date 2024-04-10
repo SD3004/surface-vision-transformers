@@ -583,7 +583,7 @@ def train(config):
 
                                     mpp_loss, reconstructed_batch, reconstructed_batch_unmasked, masked_indices, unmasked_indices = ssl(inputs)
 
-                                    if (iter_count+1)%1000==0:
+                                    if (iter_count+1)%100==0:
 
                                         save_reconstruction_pretrain_fmri_valset(config,
                                                                     reconstructed_batch,
