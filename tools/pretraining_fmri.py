@@ -214,7 +214,7 @@ def train(config):
                         bottleneck_dropout=bottleneck_dropout,
                         use_bottleneck=use_bottleneck,
                         use_confounds=use_confounds,
-                        weights_init=config['transformer']['init_weights'],
+                        weights_layers_init=config['transformer']['init_weights_layers'],
                         use_class_token=config['transformer']['use_class_token'],
                         trainable_pos_emb=config['transformer']['trainable_pos_emb'],
                         no_class_token_emb = config['transformer']['no_class_token_emb'],)
@@ -293,8 +293,9 @@ def train(config):
                     dataset=dataset,
                     configuration = configuration,
                     num_channels=num_channels,
-                    weights_init=config['pretraining_vsmae']['init_weights'],
+                    layers_weights_init=config['pretraining_vsmae']['init_weights'],
                     no_pos_emb_class_token_decoder=config['pretraining_vsmae']['no_pos_emb_class_token_decoder'],
+                    use_class_token_decoder=config['pretraining_vsmae']['use_class_token_decoder'],
                     mask=config['data']['masking'],
                     path_to_template=config['data']['path_to_template'],
                     path_to_workdir= config['data']['path_to_workdir'],
@@ -489,7 +490,7 @@ def train(config):
 
                                 mpp_loss, reconstructed_batch, reconstructed_batch_unmasked, masked_indices, unmasked_indices = ssl(inputs)
 
-                                if (iter_count+1)%1000==0:
+                                if (iter_count+1)%100==0:
 
                                     save_reconstruction_pretrain_fmri_valset(config,
                                                                 reconstructed_batch,
@@ -508,7 +509,6 @@ def train(config):
                                                 loss_pretrain_it,
                                                 loss_pretrain_val_epoch,
                                                 folder_to_save_model,
-                                                model,
                                                 ssl,
                                                 optimizer)
         
@@ -555,11 +555,18 @@ def train(config):
     print('Saving final checkpoint...')
 
     torch.save({'epoch':iter_count+1,
-                'model_state_dict': model.state_dict(),
+                'model_state_dict': ssl.encoder.state_dict(),
                 'optimizer_state_dict': optimizer.state_dict(),
                 'loss':loss_pretrain_it,
                 },
                 os.path.join(folder_to_save_model,'encoder-final.pt'))
+    
+    torch.save({'epoch':iter_count+1,
+                'model_state_dict': ssl.decoder.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+                'loss':loss_pretrain_it,
+                },
+                os.path.join(folder_to_save_model,'decoder-final.pt'))
 
     torch.save({'epoch':iter_count+1,
                 'model_state_dict': ssl.state_dict(),

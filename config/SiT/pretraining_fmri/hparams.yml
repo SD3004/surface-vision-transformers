@@ -64,7 +64,7 @@ data:
 logging:
   folder_to_save_model: "{}/logs/{}/{}/{}/{}/{}/SiT/ico_grid_{}/{}" #{dataset},{modality},{task},{grid resolution},{configuration}
 
-###################################  MODEL  ####################################
+###################################  ENCODER MODEL  ####################################
 
 transformer:
   dim: 192 #192, 384, 768
@@ -77,10 +77,10 @@ transformer:
   dropout: 0.0
   emb_dropout: 0.0
   use_pos_embedding: 'sin-cos' #'trainable', 'sin-cos', False
-  use_class_token: False #for vsMAE set to FALSE! we are not using classification token
+  use_class_token: True #for vsMAE set to FALSE! we are not using classification token
   trainable_pos_emb: False #False #only for use_pos_embedding=trainable
-  no_class_token_emb: True #for vsMAE set to TRUE! not using classification token position embedding
-  init_weights: False #True
+  no_class_token_emb: True #for vsMAE set to TRUE! not using classification [CLS] token position embeddings
+  init_weights_layers: False #True
 
 
 ##################################  TRAINING  ###################################
@@ -142,7 +142,7 @@ pretraining_vsmae:
   loss: mse #mse, l1
   init_weights: False #False
   save_reconstruction: True
-  use_class_token_dec: False
+  use_class_token_decoder: True
   no_pos_emb_class_token_decoder: True ##if using pos emb in class token decoder set to FALSE, else set to TRUE
   masking_type: tubelet #tubelet, random
   mask_loss: True

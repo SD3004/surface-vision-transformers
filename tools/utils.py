@@ -131,15 +131,15 @@ def get_dataloaders(config,
         print('loading functional data')
         if modality == 'tfMRI':
             if runtime:
-                train_loader = loader_tfmri_runtime(data_path,config)
+                train_loader,val_loader = loader_tfmri_runtime(data_path,config)
             else:
-                train_loader = loader_tfmri(data_path,config)
+                train_loader,val_loader = loader_tfmri(data_path,config)
         elif (modality == 'rfMRI') or (modality == 'smooth_rfMRI'):
             if runtime: 
-                train_loader = loader_rfmri_runtime(data_path,config)
+                train_loader,val_loader = loader_rfmri_runtime(data_path,config)
             else:
-                train_loader = loader_rfmri(data_path,config)
-        return train_loader
+                train_loader,val_loader = loader_rfmri(data_path,config)
+        return train_loader,val_loader
     else:
         raise('not implemented yet')
     

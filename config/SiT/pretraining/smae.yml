@@ -77,7 +77,7 @@ transformer:
   use_class_token: False #for mae:True (but not used)
   trainable_pos_emb: False #False #only for use_pos_embedding=trainable
   no_class_token_emb: True #for vsMAE set to TRUE! not using classification token position embedding
-  init_weights: False #True
+  init_weights_layers: False #True
 
 
 ##################################  TRAINING  ###################################
