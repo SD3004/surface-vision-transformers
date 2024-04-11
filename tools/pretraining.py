@@ -181,7 +181,7 @@ def train(config):
                         bottleneck_dropout=bottleneck_dropout,
                         use_bottleneck=use_bottleneck,
                         use_confounds=use_confounds,
-                        weights_init=config['transformer']['init_weights'],
+                        weights_layers_init=config['transformer']['init_weights_layers'],
                         use_class_token=config['transformer']['use_class_token'],
                         trainable_pos_emb=config['transformer']['trainable_pos_emb'],
                         no_class_token_emb = config['transformer']['no_class_token_emb'],)

@@ -25,11 +25,6 @@ def warn(*args, **kwargs):
 import warnings
 warnings.warn = warn
 
-
-sys.path.append('../')
-sys.path.append('../../')
-sys.path.append('./')
-sys.path.append('../models/')
 sys.path.append('/jmain02/home/J2AD019/exk01/sxd59-exk01/workspace/sMAE/')
 from tools.utils import logging_sit, get_data_path, get_dataloaders_distributed, get_dimensions, get_scheduler
 
@@ -270,7 +265,7 @@ def train(config):
                         bottleneck_dropout=bottleneck_dropout,
                         use_bottleneck=use_bottleneck,
                         use_confounds=use_confounds,
-                        weights_init=config['transformer']['init_weights'],
+                        weights_layers_init=config['transformer']['init_weights_layers'],
                         use_class_token=config['transformer']['use_class_token'],
                         trainable_pos_emb=config['transformer']['trainable_pos_emb'],
                         no_class_token_emb = config['transformer']['no_class_token_emb'],)
@@ -358,8 +353,9 @@ def train(config):
                     dataset=dataset,
                     configuration = configuration,
                     num_channels=num_channels,
-                    weights_init=config['pretraining_vsmae']['init_weights'],
+                    layers_weights_init=config['pretraining_vsmae']['init_weights'],
                     no_pos_emb_class_token_decoder=config['pretraining_vsmae']['no_pos_emb_class_token_decoder'],
+                    use_class_token_decoder=config['pretraining_vsmae']['use_class_token_decoder'],
                     mask=config['data']['masking'],
                     path_to_template=config['data']['path_to_template'],
                     path_to_workdir= config['data']['path_to_workdir'],
@@ -666,7 +662,7 @@ def train(config):
                     os.path.join(folder_to_save_model,'decoder-final.pt'))
 
         torch.save({'epoch':iter_count+1,
-                    'model_state_dict': ssl.state_dict(),
+                    'model_state_dict': ssl.module.state_dict(),
                     'optimizer_state_dict': optimizer.state_dict(),
                     'loss':running_loss_gpu_it,
                     },
