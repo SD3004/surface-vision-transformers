@@ -44,9 +44,9 @@ ico_5_grid:
     num_vertices: 5
 
 data:
-  path_to_data: /nfs/home/sdahan/workspace/data # /home/sd20/data/HCP/rest/ #/drive/data/HCP/movie_task/fmri_7T_1.6 , , /drive/data/HCP/rest
-  path_to_template: /nfs/home/sdahan/workspace/sMAE/data/templates
-  path_to_workdir: /nfs/home/sdahan/workspace/sMAE
+  path_to_data: /jmain02/home/J2AD019/exk01/sxd59-exk01/workspace/data # /home/sd20/data/HCP/rest/ #/drive/data/HCP/movie_task/fmri_7T_1.6 , , /drive/data/HCP/rest
+  path_to_template: /jmain02/home/J2AD019/exk01/sxd59-exk01/workspace/sMAE/data/templates
+  path_to_workdir: /jmain02/home/J2AD019/exk01/sxd59-exk01/workspace/sMAE
   dataset: HCP #dHCP, HCP, UKB
   registration: msmall #msmsulc, msmall
   dataloader: bold #metrics, numpy

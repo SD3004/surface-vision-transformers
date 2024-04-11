@@ -30,7 +30,7 @@ sys.path.append('../')
 sys.path.append('../../')
 sys.path.append('./')
 sys.path.append('../models/')
-sys.path.append('/nfs/home/sdahan/workspace/sMAE/')
+sys.path.append('/jmain02/home/J2AD019/exk01/sxd59-exk01/workspace/sMAE/')
 from tools.utils import logging_sit, get_data_path, get_dataloaders_distributed, get_dimensions, get_scheduler
 
 
@@ -583,7 +583,7 @@ def train(config):
 
                                     mpp_loss, reconstructed_batch, reconstructed_batch_unmasked, masked_indices, unmasked_indices = ssl(inputs)
 
-                                    if (iter_count+1)%1000==0:
+                                    if (iter_count+1)%100==0:
 
                                         save_reconstruction_pretrain_fmri_valset(config,
                                                                     reconstructed_batch,
