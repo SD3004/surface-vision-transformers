@@ -306,6 +306,8 @@ class vsMAE(nn.Module):
         if masking_type == 'tubelet':
             
             if self.temporal_rep == 'concat':
+                
+                #import pdb;pdb.set_trace()
 
                 B, n_unmasked, V = x.shape
                 L = n_unmasked // self.nbr_frames 
@@ -321,11 +323,15 @@ class vsMAE(nn.Module):
                 
                 B, n_unmasked, V = x.shape 
                 L = n_unmasked                
+                #import pdb;pdb.set_trace()
                 # append mask tokens to sequence
                 mask_tokens = self.mask_token.repeat(x.shape[0], ids_restore.shape[1] - L, 1) ## I have removed the +1
-                x_ = torch.cat([x, mask_tokens], dim=1) if (not self.encoder.use_class_token) else torch.cat([x[:, 1:, :], mask_tokens], dim=1) # no cls token
+                #x_ = torch.cat([x, mask_tokens], dim=1) if (not self.encoder.use_class_token) else torch.cat([x[:, 1:, :], mask_tokens], dim=1) # no cls token
+                x_ = torch.cat([x, mask_tokens], dim=1)
                 x_ = torch.gather(x_, dim=1, index=ids_restore.unsqueeze(-1).repeat(1, 1, V))  # unshuffle
                 x_dec = x_
+            
+            #import pdb;pdb.set_trace()
         
         elif masking_type == 'random':
             B, n_unmasked, V = x.shape 
