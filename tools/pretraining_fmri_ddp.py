@@ -519,7 +519,7 @@ def train(config):
                 if rank==0:
                     log_pretrain(config, optimizer, scheduler, iter_count+1, running_loss_gpu_it)
 
-                    if (iter_count+1)%1000==0:
+                    if (iter_count+1)%100==0:
 
                         save_reconstruction_pretrain_fmri(config,
                                                         reconstructed_batch_token_masked[:1],
