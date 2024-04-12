@@ -762,6 +762,7 @@ def save_reconstruction_mae_fmri(reconstructed_batch_token_masked, #
     elif temporal_rep == 'channels':
 
         new_inputs = rearrange(inputs, 'b c l v -> b l c v').cpu().numpy()
+        #import pdb;pdb.set_trace()
     
 
     for i in range(num_patches):
@@ -780,7 +781,7 @@ def save_reconstruction_mae_fmri(reconstructed_batch_token_masked, #
 
     reconstructed_sphere = np.zeros((40962,num_frames),dtype=np.float32)
 
-    if masking_type == 'tubelet':
+    if masking_type == 'tubelet' or temporal_rep == 'channels':
 
         for i in range(num_patches):
             indices_to_extract = indices[str(i)].values
@@ -871,6 +872,7 @@ def save_reconstruction_mae_fmri(reconstructed_batch_token_masked, #
 
         save_gifti(reconstructed_sphere, os.path.join(folder_to_save_model,'reconstruction', '{}'.format(split), 'output_sphere_{}_{}.shape.gii'.format(epoch,id)))
 
+        #import pdb;pdb.set_trace()
         if not server:
             p1 = subprocess.Popen(['/home/sd20/software/workbench/bin_linux64/wb_command', '-set-structure',os.path.join(folder_to_save_model,'reconstruction','{}'.format(split), \
                                                                                                                         'output_sphere_{}_{}.shape.gii'.format(epoch,id)), 'CORTEX_LEFT'])

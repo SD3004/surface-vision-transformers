@@ -193,6 +193,8 @@ class vsMAE(nn.Module):
                 mask_binary = torch.gather(mask_binary, dim=1, index=ids_restore)
                 
         elif masking_type == 'random':
+
+            #import pdb;pdb.set_trace()
             
             len_to_keep = int(N * round((1 - mask_ratio),2))
             
@@ -225,6 +227,7 @@ class vsMAE(nn.Module):
         latent, mask_binary, ids_restore, ids_tokens_not_masked, ids_tokens_masked = self.forward_encoder(imgs,confounds)
         #import pdb;pdb.set_trace()
         pred = self.forward_decoder(latent, ids_restore, self.masking_type)  # [N, L, p*p*3] # [N,L,v*C]
+        #import pdb;pdb.set_trace()
         if self.use_class_token_decoder:
             pred = pred[:, 1:, :] #remove the classification token
         #import pdb;pdb.set_trace()
@@ -247,6 +250,7 @@ class vsMAE(nn.Module):
                 #import pdb;pdb.set_trace()
             
         elif self.masking_type == 'random':
+            #print('random')
 
             pred_tokens_not_masked = torch.gather(pred, dim=1, index=ids_tokens_not_masked.unsqueeze(-1).repeat(1,1,pred.shape[-1]))
             pred_tokens_masked = torch.gather(pred, dim=1, index=ids_tokens_masked.unsqueeze(-1).repeat(1,1,pred.shape[-1]))
@@ -257,6 +261,7 @@ class vsMAE(nn.Module):
         prediction_pixels_masked_, prediction_pixels_not_masked_ = self.save_reconstruction(pred_tokens_not_masked, pred_tokens_masked, ids_tokens_not_masked, ids_tokens_masked)
 
         return loss, prediction_pixels_masked_, prediction_pixels_not_masked_, ids_tokens_masked, ids_tokens_not_masked
+
 
     def forward_encoder(self, img, confounds=None):
         device = img.device
@@ -334,17 +339,23 @@ class vsMAE(nn.Module):
             #import pdb;pdb.set_trace()
         
         elif masking_type == 'random':
-            B, n_unmasked, V = x.shape 
+            #print('random')
+            B, n_unmasked, V = x.shape
             # append mask tokens to sequence
             mask_tokens = self.mask_token.repeat(x.shape[0], ids_restore.shape[1] - n_unmasked, 1) ## I have removed the +1
-            x_ = torch.cat([x, mask_tokens], dim=1) if (not self.encoder.use_class_token) else torch.cat([x[:, 1:, :], mask_tokens], dim=1) # no cls token
+            #import pdb;pdb.set_trace()
+            #x_ = torch.cat([x, mask_tokens], dim=1) if (not self.encoder.use_class_token) else torch.cat([x[:, 1:, :], mask_tokens], dim=1) # no cls token
+            x_ = torch.cat([x, mask_tokens], dim=1) 
+            #import pdb;pdb.set_trace()
             x_dec = torch.gather(x_, dim=1, index=ids_restore.unsqueeze(-1).repeat(1 ,1, V))  # unshuffle
+            #import pdb;pdb.set_trace()
 
-
+        #import pdb;pdb.set_trace()
         # add pos embed and classification token 
         if self.no_pos_emb_class_token_decoder:
             #import pdb;pdb.set_trace()
             x_dec = x_dec + self.decoder_pos_emb
+            #import pdb;pdb.set_trace()
             #x_dec = torch.cat([x[:, :1, :], x_dec], dim=1)  # append cls token
             ##### HERE I COULD ADD THE CLASS TOKEN FROM THE ENCODER POTENTIALLY
             if self.use_class_token_decoder:
@@ -383,7 +394,6 @@ class vsMAE(nn.Module):
         
         if self.temporal_rep == 'channels':
             target = rearrange(target,'b c n v  -> b n (v c)')
-        #import pdb;pdb.set_trace()
             
         ## compute loss for all patches #check the size
         if self.loss == 'mse':
@@ -489,63 +499,103 @@ class vsMAE(nn.Module):
                 prediction_pixels_tokens_masked = rearrange(prediction_pixels_masked_, ' b n c v -> b c n v')
                 prediction_pixels_tokens_not_masked = rearrange(prediction_pixels_not_masked_, ' b n c v -> b c n v')
             
+        
+          
         elif self.masking_type == 'random':
+            #print('random')
 
-            for f in range(self.nbr_frames):
+            if self.temporal_rep == 'concat':
 
-                ### masked tokens
+                for f in range(self.nbr_frames):
 
-                n_patches_masked = (pred_tokens_masked.shape[1] // self.nbr_frames)
+                    ### masked tokens
 
-                prediction_pixels_masked = rearrange(pred_tokens_masked[:,f*n_patches_masked:(f+1)*n_patches_masked,:], 'b n (v c) -> b n c v',
+                    n_patches_masked = (pred_tokens_masked.shape[1] // self.nbr_frames)
+
+                    prediction_pixels_masked = rearrange(pred_tokens_masked[:,f*n_patches_masked:(f+1)*n_patches_masked,:], 'b n (v c) -> b n c v',
+                                                    b = pred_tokens_masked.shape[0],
+                                                    n = n_patches_masked, 
+                                                    c = self.num_channels,
+                                                    v = self.num_vertices_per_channel)
+
+                    prediction_pixels_masked_ = torch.zeros_like(prediction_pixels_masked)
+
+                    ### un masked tokens
+                    n_patches_non_masked = (pred_tokens_not_masked.shape[1] // self.nbr_frames)
+
+                    prediction_pixels_not_masked = rearrange(pred_tokens_not_masked[:,f*n_patches_non_masked:(f+1)*n_patches_non_masked,:],
+                                                            'b n (v c) -> b n c v', 
+                                                            b = pred_tokens_not_masked.shape[0],
+                                                            n = n_patches_non_masked,
+                                                            c = self.num_channels,
+                                                            v = self.num_vertices_per_channel)
+
+                    prediction_pixels_not_masked_ = torch.zeros_like(prediction_pixels_not_masked)
+
+                    n_total = n_patches_masked + n_patches_non_masked
+
+                    for i in range(pred_tokens_masked.shape[0]):
+                        for j,k in enumerate((ids_tokens_masked%n_total)[i,f*n_patches_masked:(f+1)*n_patches_masked]):
+                            indices_to_extract = torch.Tensor(self.triangle_indices[str(k.cpu().numpy())].values).long()
+                            indices_to_extract = indices_to_extract.to(pred_tokens_masked.device)
+                            prediction_pixels_masked_[i,j,:,:] = prediction_pixels_masked[i,j,:,:] * mask_cortex[indices_to_extract]
+                    prediction_pixels_masked_ = rearrange(prediction_pixels_masked_, 'b n c v -> b n (v c)')
+
+                    #import pdb;pdb.set_trace()
+
+
+                    for i in range(pred_tokens_not_masked.shape[0]):
+                        for j,k in enumerate((ids_tokens_not_masked%n_total)[i,f*n_patches_non_masked:(f+1)*n_patches_non_masked]):
+                            indices_to_extract = torch.Tensor(self.triangle_indices[str(k.cpu().numpy())].values).long()
+                            indices_to_extract = indices_to_extract.to(pred_tokens_not_masked.device)
+                            prediction_pixels_not_masked_[i,j,:,:] = prediction_pixels_not_masked[i,j,:,:] * mask_cortex[indices_to_extract]
+                    prediction_pixels_not_masked_ = rearrange(prediction_pixels_not_masked_, 'b n c v -> b n (v c)')
+
+
+                    prediction_pixels_tokens_masked[:,f*n_patches_masked:(f+1)*n_patches_masked,:] = prediction_pixels_masked_
+                    prediction_pixels_tokens_not_masked[:,f*n_patches_non_masked:(f+1)*n_patches_non_masked,:] = prediction_pixels_not_masked_
+
+                B = prediction_pixels_tokens_not_masked.shape[0]
+                V = prediction_pixels_tokens_not_masked.shape[-1]
+                
+                prediction_pixels_tokens_masked = rearrange(prediction_pixels_tokens_masked, 'b (t l) v -> b t l v', b=B, t=self.nbr_frames,l=n_patches_masked,v=V)
+                prediction_pixels_tokens_not_masked = rearrange(prediction_pixels_tokens_not_masked, 'b (t l) v -> b t l v', b=B, t=self.nbr_frames,l=n_patches_non_masked,v=V)
+
+        
+            elif self.temporal_rep == 'channels': 
+                
+                prediction_pixels_masked = rearrange(pred_tokens_masked, 'b n (v c) -> b n c v',
                                                 b = pred_tokens_masked.shape[0],
-                                                n = n_patches_masked, 
+                                                n = pred_tokens_masked.shape[1], \
                                                 c = self.num_channels,
                                                 v = self.num_vertices_per_channel)
-
+                
                 prediction_pixels_masked_ = torch.zeros_like(prediction_pixels_masked)
-
-                ### un masked tokens
-                n_patches_non_masked = (pred_tokens_not_masked.shape[1] // self.nbr_frames)
-
-                prediction_pixels_not_masked = rearrange(pred_tokens_not_masked[:,f*n_patches_non_masked:(f+1)*n_patches_non_masked,:],
+                
+                prediction_pixels_not_masked = rearrange(pred_tokens_not_masked,
                                                         'b n (v c) -> b n c v', 
                                                         b = pred_tokens_not_masked.shape[0],
-                                                        n = n_patches_non_masked,
+                                                        n = pred_tokens_not_masked.shape[1], 
                                                         c = self.num_channels,
                                                         v = self.num_vertices_per_channel)
-
                 prediction_pixels_not_masked_ = torch.zeros_like(prediction_pixels_not_masked)
-
-                n_total = n_patches_masked + n_patches_non_masked
-
+                
                 for i in range(pred_tokens_masked.shape[0]):
-                    for j,k in enumerate((ids_tokens_masked%n_total)[i,f*n_patches_masked:(f+1)*n_patches_masked]):
+                    for j,k in enumerate(ids_tokens_masked[i]):
                         indices_to_extract = torch.Tensor(self.triangle_indices[str(k.cpu().numpy())].values).long()
                         indices_to_extract = indices_to_extract.to(pred_tokens_masked.device)
                         prediction_pixels_masked_[i,j,:,:] = prediction_pixels_masked[i,j,:,:] * mask_cortex[indices_to_extract]
-                prediction_pixels_masked_ = rearrange(prediction_pixels_masked_, 'b n c v -> b n (v c)')
-
-                #import pdb;pdb.set_trace()
-
 
                 for i in range(pred_tokens_not_masked.shape[0]):
-                    for j,k in enumerate((ids_tokens_not_masked%n_total)[i,f*n_patches_non_masked:(f+1)*n_patches_non_masked]):
+                    for j,k in enumerate(ids_tokens_not_masked[i]):
                         indices_to_extract = torch.Tensor(self.triangle_indices[str(k.cpu().numpy())].values).long()
                         indices_to_extract = indices_to_extract.to(pred_tokens_not_masked.device)
                         prediction_pixels_not_masked_[i,j,:,:] = prediction_pixels_not_masked[i,j,:,:] * mask_cortex[indices_to_extract]
-                prediction_pixels_not_masked_ = rearrange(prediction_pixels_not_masked_, 'b n c v -> b n (v c)')
-
-
-                prediction_pixels_tokens_masked[:,f*n_patches_masked:(f+1)*n_patches_masked,:] = prediction_pixels_masked_
-                prediction_pixels_tokens_not_masked[:,f*n_patches_non_masked:(f+1)*n_patches_non_masked,:] = prediction_pixels_not_masked_
-
-            B = prediction_pixels_tokens_not_masked.shape[0]
-            V = prediction_pixels_tokens_not_masked.shape[-1]
-            
-            prediction_pixels_tokens_masked = rearrange(prediction_pixels_tokens_masked, 'b (t l) v -> b t l v', b=B, t=self.nbr_frames,l=n_patches_masked,v=V)
-            prediction_pixels_tokens_not_masked = rearrange(prediction_pixels_tokens_not_masked, 'b (t l) v -> b t l v', b=B, t=self.nbr_frames,l=n_patches_non_masked,v=V)
-
+                        
+                prediction_pixels_tokens_masked = rearrange(prediction_pixels_masked_, ' b n c v -> b c n v')
+                prediction_pixels_tokens_not_masked = rearrange(prediction_pixels_not_masked_, ' b n c v -> b c n v')
+        
+        
         return prediction_pixels_tokens_masked, prediction_pixels_tokens_not_masked
     
     
