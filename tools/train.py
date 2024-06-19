@@ -39,13 +39,7 @@ import torch.optim as optim
 import numpy as np
 import pandas as pd
 
-from torch.optim.lr_scheduler import StepLR
-from torch.optim.lr_scheduler import ReduceLROnPlateau
-
-
 from models.sit import SiT
-
-from warmup_scheduler import GradualWarmupScheduler
 
 from utils.utils import load_weights_imagenet
 

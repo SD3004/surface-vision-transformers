@@ -17,7 +17,7 @@ training:
   LR: 0.00001
   bs: 256
   bs_val: 1
-  epochs: 30
+  epochs: 100
   gpu: 0
   l1loss: False
   testing: False
@@ -79,6 +79,3 @@ sub_ico_1:
 sub_ico_2:
     num_patches: 320
     num_vertices: 153 
-
-
-
